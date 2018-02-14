@@ -36,7 +36,7 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout">
+    <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,1">
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,0">
        <property name="sizeConstraint">
@@ -385,6 +385,36 @@ border: 1px solid rgb(150, 150, 150);</string>
        </attribute>
        <column/>
        <column/>
+      </widget>
+     </item>
+     <item>
+      <widget class="QTreeView" name="treeView">
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
+       <property name="dragEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="dragDropMode">
+        <enum>QAbstractItemView::DragOnly</enum>
+       </property>
+       <property name="indentation">
+        <number>10</number>
+       </property>
+       <property name="rootIsDecorated">
+        <bool>false</bool>
+       </property>
+       <property name="itemsExpandable">
+        <bool>false</bool>
+       </property>
+       <property name="sortingEnabled">
+        <bool>true</bool>
+       </property>
+       <property name="expandsOnDoubleClick">
+        <bool>false</bool>
+       </property>
       </widget>
      </item>
     </layout>

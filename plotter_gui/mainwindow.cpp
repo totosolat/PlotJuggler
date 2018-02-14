@@ -212,6 +212,7 @@ void MainWindow::onRedoInvoked()
 }
 
 
+//TODO: move this logic into FilterableListWidget
 void MainWindow::updateLeftTableValues()
 {
     const auto& table = _curvelist_widget->getTable();
@@ -230,7 +231,6 @@ void MainWindow::updateLeftTableValues()
             auto it = _mapped_plot_data.numeric.find(name);
             if( it !=  _mapped_plot_data.numeric.end())
             {
-                nonstd::optional<PlotData::TimeType> value;
                 PlotDataPtr data = it->second;
 
                 double num = 0.0;

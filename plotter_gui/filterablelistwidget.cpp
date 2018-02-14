@@ -66,6 +66,7 @@ FilterableListWidget::FilterableListWidget(QWidget *parent) :
     else if( active_filter == "radioPrefix")   ui->radioPrefix->setChecked(true);
     else if( active_filter == "radioContains") ui->radioContains->setChecked(true);
 
+    ui->treeView->setModel( _tree_model );
 }
 
 FilterableListWidget::~FilterableListWidget()
@@ -123,8 +124,8 @@ void FilterableListWidget::addItem(const QString &item_name, bool sort_columns)
     if( sort_columns )
     {
       ui->tableWidget->sortByColumn(0,Qt::AscendingOrder);
+      ui->treeView->sortByColumn(0,Qt::AscendingOrder);
     }
-
     addToCompletionTree(item);
 }
 
@@ -305,6 +306,9 @@ void FilterableListWidget::addToCompletionTree(QTableWidgetItem* item)
             parent_item = item;
         }
     }
+
+    ui->treeView->setItemsExpandable(false);
+    ui->treeView->expandAll();
 }
 
 void FilterableListWidget::on_radioPrefix_toggled(bool checked)
