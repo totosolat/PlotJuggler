@@ -59,6 +59,7 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
     _time_offset(0.0)
 {
     this->setAcceptDrops( true );
+
     this->setMinimumWidth( 100 );
     this->setMinimumHeight( 100 );
 
@@ -76,8 +77,6 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
 
     this->axisScaleEngine(QwtPlot::xBottom)->setAttribute(QwtScaleEngine::Floating,true);
     this->plotLayout()->setAlignCanvasToScales( true );
-
-    this->canvas()->installEventFilter( this );
 
     //--------------------------
     _grid = new QwtPlotGrid();
@@ -117,7 +116,6 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
 
     _custom_Y_limits.min = (-MAX_DOUBLE );
     _custom_Y_limits.max = ( MAX_DOUBLE );
-
 }
 
 void PlotWidget::buildActions()
@@ -376,7 +374,8 @@ const std::map<QString, std::shared_ptr<QwtPlotCurve> > &PlotWidget::curveList()
 
 void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
 {
-    qDebug() << "drag enter";
+    this->setCanvasBackground( QColor( 230, 230, 230 ) );
+    replot();
 
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
@@ -388,7 +387,6 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
         if( format.contains( "curveslist") )
         {
             event->acceptProposedAction();
-            qDebug() << "drag enter. Mime " << format ;
         }
         if( format.contains( "plot_area")  )
         {
@@ -397,20 +395,21 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
 
             if(QString::compare( windowTitle(),source_name ) != 0 ){
                 event->acceptProposedAction();
-                qDebug() << "drag enter. Mime " << format ;
             }
         }
     }
 }
 void PlotWidget::dragMoveEvent(QDragMoveEvent *event)
 {
-  event->acceptProposedAction();
+  event->accept();
+  QwtPlot::dragMoveEvent(event);
 }
 
 
 void PlotWidget::dropEvent(QDropEvent *event)
 {
-    qDebug() << "-- drop ---";
+    this->setCanvasBackground( QColor( 250, 250, 250 ) );
+
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
 
@@ -1329,8 +1328,28 @@ bool PlotWidget::eventFilter(QObject *obj, QEvent *event)
         }
     }break;
 
+    case QEvent::DragEnter: {
+      this->dragEnterEvent( static_cast<QDragEnterEvent*>(event) );
+    } break;                         // drag moves into widget
+    case QEvent::DragMove:  {
+      this->dragMoveEvent(  static_cast<QDragMoveEvent*>(event ) );
+    } break;
+    case QEvent::DragLeave: {
+      this->dragLeaveEvent( static_cast<QDragLeaveEvent*>(event ) );
+    } break;
+    case QEvent::Drop:      {
+      this->dropEvent( static_cast<QDropEvent*>(event ) );
+    } break;
+
+
     } //end switch
 
-    return QwtPlot::eventFilter( obj, event );
+    return QWidget::eventFilter( obj, event );
+}
+
+void PlotWidget::dragLeaveEvent(QDragLeaveEvent *event)
+{
+  this->setCanvasBackground( QColor( 250, 250, 250 ) );
+  replot();
 }
 

@@ -199,7 +199,6 @@ bool FilterableListWidget::eventFilter(QObject *object, QEvent *event)
       else {
         return false;
       }
-      qDebug() << "---------------\npress ";
       return QWidget::eventFilter(object,event);
     }
     else if(event->type() == QEvent::MouseMove)
@@ -253,7 +252,6 @@ bool FilterableListWidget::eventFilter(QObject *object, QEvent *event)
 
         drag->setMimeData(mimeData);
         drag->exec(Qt::CopyAction | Qt::MoveAction);
-        qDebug() << "Drag " ;
       }
       return true;
     }
