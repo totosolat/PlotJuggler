@@ -376,7 +376,7 @@ const std::map<QString, std::shared_ptr<QwtPlotCurve> > &PlotWidget::curveList()
 
 void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
 {
-    QwtPlot::dragEnterEvent(event);
+    qDebug() << "drag enter";
 
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
@@ -388,6 +388,7 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
         if( format.contains( "curveslist") )
         {
             event->acceptProposedAction();
+            qDebug() << "drag enter. Mime " << format ;
         }
         if( format.contains( "plot_area")  )
         {
@@ -396,20 +397,20 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
 
             if(QString::compare( windowTitle(),source_name ) != 0 ){
                 event->acceptProposedAction();
+                qDebug() << "drag enter. Mime " << format ;
             }
         }
     }
 }
-void PlotWidget::dragMoveEvent(QDragMoveEvent *)
+void PlotWidget::dragMoveEvent(QDragMoveEvent *event)
 {
-
+  event->acceptProposedAction();
 }
 
 
 void PlotWidget::dropEvent(QDropEvent *event)
 {
-    QwtPlot::dropEvent(event);
-
+    qDebug() << "-- drop ---";
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
 
@@ -431,12 +432,14 @@ void PlotWidget::dropEvent(QDropEvent *event)
             if( plot_added ) {
                 emit undoableChange();
             }
+            event->acceptProposedAction();
         }
         else if( format.contains( "curveslist/new_X_axis") )
         {
             QString curve_name;
             stream >> curve_name;
             changeAxisX(curve_name);
+            event->acceptProposedAction();
         }
         else if( format.contains( "plot_area") )
         {
@@ -444,6 +447,7 @@ void PlotWidget::dropEvent(QDropEvent *event)
             stream >> source_name;
             PlotWidget* source_plot = static_cast<PlotWidget*>( event->source() );
             emit swapWidgetsRequested( source_plot, this );
+            event->acceptProposedAction();
         }
     }
 }
