@@ -45,7 +45,6 @@ FilterableListWidget::FilterableListWidget(QWidget *parent) :
 {
     ui->setupUi(this);
     ui->tableWidget->viewport()->installEventFilter( this );
-  //  ui->lineEdit->installEventFilter( this );
 
     ui->tableWidget->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
     ui->tableWidget->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);

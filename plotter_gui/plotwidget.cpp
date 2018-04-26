@@ -399,12 +399,13 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
         }
     }
 }
-void PlotWidget::dragMoveEvent(QDragMoveEvent *event)
-{
-  event->accept();
-  QwtPlot::dragMoveEvent(event);
-}
 
+
+void PlotWidget::dragLeaveEvent(QDragLeaveEvent *event)
+{
+  this->setCanvasBackground( QColor( 250, 250, 250 ) );
+  replot();
+}
 
 void PlotWidget::dropEvent(QDropEvent *event)
 {
@@ -1347,9 +1348,4 @@ bool PlotWidget::eventFilter(QObject *obj, QEvent *event)
     return QWidget::eventFilter( obj, event );
 }
 
-void PlotWidget::dragLeaveEvent(QDragLeaveEvent *event)
-{
-  this->setCanvasBackground( QColor( 250, 250, 250 ) );
-  replot();
-}
 
