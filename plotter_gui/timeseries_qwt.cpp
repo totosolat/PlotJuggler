@@ -59,7 +59,6 @@ void TimeseriesQwt::updateData()
       max_y = std::max( max_y, y );
     };
 
-
     //if(updated || force_transform)
     {
         if(_transform == noTransform)
@@ -120,6 +119,52 @@ void TimeseriesQwt::updateData()
                 updateMinMax( p.x(), p.y() );
             }
         }
+        else if(_transform == mean)
+        {
+            _cached_transformed_curve.resize(_plot_data->size());
+            double sum = 0.0;
+
+            for (size_t i=0; i< _plot_data->size(); i++ )
+            {
+                const auto& p0 = _plot_data->at( i );
+                sum += p0.y;
+            }
+
+            const double mean = sum / _plot_data->size();
+
+            for (size_t i=0; i< _plot_data->size(); i++ )
+            {
+                const auto& p0 = _plot_data->at( i );
+                QPointF p(p0.x, mean);
+                p.setX(p.x() - _time_offset);
+                _cached_transformed_curve[i] = p;
+                updateMinMax( p.x(), p.y() );
+            }
+        }
+        else if(_transform == standardDeviation)
+        {
+            _cached_transformed_curve.resize(_plot_data->size());
+
+            double sum = 0.0;
+            for (size_t i=0; i< _plot_data->size(); i++ ) {
+                sum += _plot_data->at(i).y;
+            }
+            const double mean = sum / _plot_data->size();
+
+            double squares_sum = 0.0;
+            for (size_t i=0; i< _plot_data->size(); i++ ) {
+                squares_sum += std::pow(_plot_data->at(i).y - mean, 2);
+            }
+            const double standard_deviation = std::sqrt(squares_sum / _plot_data->size());
+
+            for (size_t i=0; i<_plot_data->size(); i++ )
+            {
+                QPointF p(_plot_data->at(i).x, standard_deviation);
+                p.setX(p.x() - _time_offset);
+                _cached_transformed_curve[i] = p;
+                updateMinMax( p.x(), p.y() );
+            }
+        }
         else if( _transform == XYPlot && _alternative_X_axis)
         {
             bool failed = false;
@@ -163,7 +208,7 @@ void TimeseriesQwt::updateData()
 }
 
 PlotData::RangeTimeOpt TimeseriesQwt::getVisualizationRangeX()
-{   
+{
     // std::lock_guard<std::mutex> lock(_mutex);
     if( this->size() < 2 )
         return  PlotData::RangeTimeOpt();
