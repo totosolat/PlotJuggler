@@ -184,6 +184,10 @@ void PlotWidget::buildActions()
     _action_standardDeviationTransform->setCheckable( true );
     connect(_action_standardDeviationTransform, &QAction::triggered, this, &PlotWidget::on_standardDeviationTransform_triggered);
 
+    _action_fourierTransformTransform = new QAction(tr("&Fourier transform"), this);
+    _action_fourierTransformTransform->setCheckable( true );
+    connect(_action_fourierTransformTransform, &QAction::triggered, this, &PlotWidget::on_fourierTransformTransform_triggered);
+
     _action_phaseXY = new QAction(tr("&XY plot"), this);
     _action_phaseXY->setCheckable( true );
     connect(_action_phaseXY, &QAction::triggered, this, &PlotWidget::on_convertToXY_triggered);
@@ -201,6 +205,7 @@ void PlotWidget::buildActions()
     transform_group->addAction(_action_2ndDerivativeTransform);
     transform_group->addAction(_action_meanTransform);
     transform_group->addAction(_action_standardDeviationTransform);
+    transform_group->addAction(_action_fourierTransformTransform);
     transform_group->addAction(_action_phaseXY);
 }
 
@@ -227,6 +232,7 @@ void PlotWidget::canvasContextMenuTriggered(const QPoint &pos)
     menu.addAction( _action_2ndDerivativeTransform );
     menu.addAction( _action_meanTransform );
     menu.addAction( _action_standardDeviationTransform );
+    menu.addAction( _action_fourierTransformTransform );
     menu.addAction( _action_phaseXY );
     menu.addSeparator();
     menu.addAction( _action_saveToFile );
@@ -1135,7 +1141,7 @@ void PlotWidget::on_2ndDerivativeTransform_triggered(bool checked)
 void PlotWidget::on_meanTransform_triggered(bool checked)
 {
     enableTracker(true);
-    if(_current_transform ==  TimeseriesQwt::mean) return;
+    if(_current_transform == TimeseriesQwt::mean) return;
 
     for (auto it :_curve_list)
     {
@@ -1160,7 +1166,7 @@ void PlotWidget::on_standardDeviationTransform_triggered(bool checked)
 {
     enableTracker(true);
 
-    if(_current_transform ==  TimeseriesQwt::standardDeviation) return;
+    if(_current_transform == TimeseriesQwt::standardDeviation) return;
 
     for (auto it :_curve_list)
     {
@@ -1176,6 +1182,32 @@ void PlotWidget::on_standardDeviationTransform_triggered(bool checked)
 
     this->setFooter(text);
     _current_transform = ( TimeseriesQwt::standardDeviation );
+
+    zoomOut(true);
+    replot();
+}
+
+void PlotWidget::on_fourierTransformTransform_triggered(bool checked)
+{
+    enableTracker(true);
+
+    if(_current_transform == TimeseriesQwt::fourierTransform) return;
+
+    _current_transform = TimeseriesQwt::fourierTransform;
+    for (auto it :_curve_list)
+    {
+        TimeseriesQwt* series = static_cast<TimeseriesQwt*>( it.second->data() );
+        series->setTransform( TimeseriesQwt::fourierTransform );
+        _point_marker[ it.first ]->setVisible(true);
+    }
+
+    QFont font_title;
+    font_title.setPointSize(10);
+    QwtText text("Fourier transform");
+    text.setFont(font_title);
+
+    this->setFooter(text);
+    _current_transform = ( TimeseriesQwt::fourierTransform );
 
     zoomOut(true);
     replot();

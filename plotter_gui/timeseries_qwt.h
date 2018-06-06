@@ -40,6 +40,7 @@ public:
       secondDerivative,
       mean,
       standardDeviation,
+      fourierTransform,
       XYPlot
     } Transform;
 

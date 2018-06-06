@@ -1,8 +1,10 @@
 #include "timeseries_qwt.h"
+#include "fft.h"
 #include <limits>
 #include <stdexcept>
 #include <QMessageBox>
 #include <QString>
+#include <complex>
 
 TimeseriesQwt::TimeseriesQwt(PlotDataPtr base):
     _plot_data(base),
@@ -165,6 +167,15 @@ void TimeseriesQwt::updateData()
                 updateMinMax( p.x(), p.y() );
             }
         }
+        else if(_transform == fourierTransform)
+        {
+            FFT FFT_instance;
+            FFT_instance.fft(_plot_data, _cached_transformed_curve);
+
+            for (size_t k = 0 ; k < _cached_transformed_curve.size() ; k++)
+                updateMinMax(_cached_transformed_curve[k].x(), _cached_transformed_curve[k].y());
+
+        }
         else if( _transform == XYPlot && _alternative_X_axis)
         {
             bool failed = false;
@@ -227,6 +238,11 @@ PlotData::RangeValueOpt TimeseriesQwt::getVisualizationRangeY(int first_index, i
 
     if( (_transform == XYPlot && _alternative_X_axis) ||
             ( first_index==0 && last_index == size() -1) )
+    {
+        return PlotData::RangeValueOpt( { _bounding_box.bottom(), _bounding_box.top() } );
+    }
+
+    if(_transform == fourierTransform)
     {
         return PlotData::RangeValueOpt( { _bounding_box.bottom(), _bounding_box.top() } );
     }
