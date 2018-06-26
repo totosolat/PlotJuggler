@@ -51,6 +51,7 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
     _magnifier(0 ),
     _panner( 0 ),
     _tracker ( 0 ),
+    _curveStatistics( 0 ),
     _legend( 0 ),
     _grid( 0 ),
     _mapped_data( datamap ),
@@ -84,6 +85,7 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
     _magnifier = ( new PlotMagnifier( this->canvas() ) );
     _panner = ( new QwtPlotPanner( this->canvas() ) );
     _tracker = ( new CurveTracker( this ) );
+    _curveStatistics = ( new CurveStatistics( this ) );
 
     _grid->setPen(QPen(Qt::gray, 0.0, Qt::DotLine));
 
@@ -106,6 +108,8 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
 
     buildActions();
     buildLegend();
+
+    activateCurveStatistics(true);
 
     this->canvas()->setMouseTracking(true);
     this->canvas()->installEventFilter(this);
@@ -352,6 +356,8 @@ bool PlotWidget::addCurve(const QString &name, bool do_replot)
         replot();
     }
 
+    _curveStatistics->actualiseValues();
+
     return true;
 }
 
@@ -378,6 +384,8 @@ void PlotWidget::removeCurve(const QString &name)
         }
         _action_noTransform->trigger();
     }
+
+    _curveStatistics->actualiseValues();
 }
 
 bool PlotWidget::isEmpty() const
@@ -485,6 +493,8 @@ void PlotWidget::detachAllCurves()
     _point_marker.erase(_point_marker.begin(), _point_marker.end());
     emit _tracker->setPosition( _tracker->actualPosition() );
     replot();
+
+    _curveStatistics->actualiseValues();
 }
 
 QDomElement PlotWidget::xmlSaveState( QDomDocument &doc) const
@@ -716,6 +726,8 @@ void PlotWidget::setScale(QRectF rect, bool emit_signal)
             emit rectChanged(this, rect);
         }
     }
+
+    _curveStatistics->actualiseValues();
 }
 
 void PlotWidget::reloadPlotData()
@@ -756,6 +768,12 @@ void PlotWidget::activateLegent(bool activate)
 {
     if( activate ) _legend->attach(this);
     else           _legend->detach();
+}
+
+void PlotWidget::activateCurveStatistics(bool activate)
+{
+    _curveStatistics->activate(activate);
+    _curveStatistics->actualiseValues();
 }
 
 void PlotWidget::activateGrid(bool activate)

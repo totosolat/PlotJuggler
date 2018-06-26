@@ -18,6 +18,7 @@
 #include <QDomDocument>
 #include "timeseries_qwt.h"
 #include "customtracker.h"
+#include "curvestatistics.h"
 #include "axis_limits_dialog.h"
 #include <qwt_plot_legenditem.h>
 
@@ -84,6 +85,8 @@ public slots:
 
     void activateLegent(bool activate);
 
+    void activateCurveStatistics(bool activate);
+
     void activateGrid(bool activate);
 
     void configureTracker(CurveTracker::Parameter val);
@@ -149,6 +152,7 @@ private:
 
     CurveTracker* _tracker;
     QwtPlotLegendItem* _legend;
+    CurveStatistics* _curveStatistics;
     QwtPlotGrid* _grid;
 
     PlotDataMap& _mapped_data;

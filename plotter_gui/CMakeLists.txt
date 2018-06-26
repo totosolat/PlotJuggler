@@ -33,6 +33,8 @@ SET( PLOTTER_SRC
     filterablelistwidget.cpp
     tabbedplotwidget.cpp
     subwindow.cpp
+    fft.cpp
+    curvestatistics.cpp
 
     mainwindow.h
     realslider.h

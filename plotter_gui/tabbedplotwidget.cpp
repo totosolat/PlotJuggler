@@ -458,7 +458,7 @@ bool TabbedPlotWidget::eventFilter(QObject *obj, QEvent *event)
 }
 
 void TabbedPlotWidget::on_pushButtonShowLabel_toggled(bool checked)
-{    
+{
     for(int i=0; i< ui->tabWidget->count(); i++)
     {
         PlotMatrix* matrix = static_cast<PlotMatrix*>( ui->tabWidget->widget(i) );
@@ -467,6 +467,21 @@ void TabbedPlotWidget::on_pushButtonShowLabel_toggled(bool checked)
         {
             PlotWidget* plot = matrix->plotAt(p);
             plot->activateLegent( checked );
+        }
+    }
+    currentTab()->replot();
+}
+
+void TabbedPlotWidget::on_pushButtonShowCurveStatistics_toggled(bool checked)
+{
+    for(int i=0; i< ui->tabWidget->count(); i++)
+    {
+        PlotMatrix* matrix = static_cast<PlotMatrix*>( ui->tabWidget->widget(i) );
+
+        for(unsigned p=0; p< matrix->plotCount(); p++)
+        {
+            PlotWidget* plot = matrix->plotAt(p);
+            plot->activateCurveStatistics( checked );
         }
     }
     currentTab()->replot();
@@ -498,4 +513,3 @@ void TabbedPlotWidget::setControlsVisible(bool visible)
 {
     ui->widgetControls->setVisible(visible);
 }
-
