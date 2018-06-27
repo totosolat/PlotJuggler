@@ -52,6 +52,7 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
     _panner( 0 ),
     _tracker ( 0 ),
     _curveStatistics( 0 ),
+    _is_curveStatistics_initialised(false),
     _legend( 0 ),
     _grid( 0 ),
     _mapped_data( datamap ),
@@ -110,6 +111,7 @@ PlotWidget::PlotWidget(PlotDataMap &datamap, QWidget *parent):
     buildLegend();
 
     activateCurveStatistics(true);
+    _is_curveStatistics_initialised = true;
 
     this->canvas()->setMouseTracking(true);
     this->canvas()->installEventFilter(this);
@@ -356,8 +358,6 @@ bool PlotWidget::addCurve(const QString &name, bool do_replot)
         replot();
     }
 
-    _curveStatistics->actualiseValues();
-
     return true;
 }
 
@@ -384,8 +384,6 @@ void PlotWidget::removeCurve(const QString &name)
         }
         _action_noTransform->trigger();
     }
-
-    _curveStatistics->actualiseValues();
 }
 
 bool PlotWidget::isEmpty() const
@@ -493,8 +491,6 @@ void PlotWidget::detachAllCurves()
     _point_marker.erase(_point_marker.begin(), _point_marker.end());
     emit _tracker->setPosition( _tracker->actualPosition() );
     replot();
-
-    _curveStatistics->actualiseValues();
 }
 
 QDomElement PlotWidget::xmlSaveState( QDomDocument &doc) const
@@ -726,8 +722,6 @@ void PlotWidget::setScale(QRectF rect, bool emit_signal)
             emit rectChanged(this, rect);
         }
     }
-
-    _curveStatistics->actualiseValues();
 }
 
 void PlotWidget::reloadPlotData()
@@ -954,6 +948,9 @@ void PlotWidget::replot()
         _zoomer->setZoomBase( false );
 
     QwtPlot::replot();
+
+    if (_is_curveStatistics_initialised)
+        _curveStatistics->actualiseValues();
 }
 
 void PlotWidget::launchRemoveCurveDialog()

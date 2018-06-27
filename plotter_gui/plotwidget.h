@@ -151,9 +151,11 @@ private:
     QwtPlotPanner* _panner;
 
     CurveTracker* _tracker;
-    QwtPlotLegendItem* _legend;
     CurveStatistics* _curveStatistics;
+    QwtPlotLegendItem* _legend;
     QwtPlotGrid* _grid;
+
+    bool _is_curveStatistics_initialised;
 
     PlotDataMap& _mapped_data;
     TimeseriesQwt::Transform _current_transform;
