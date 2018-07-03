@@ -182,14 +182,6 @@ void PlotWidget::buildActions()
     _action_2ndDerivativeTransform->setCheckable( true );
     connect(_action_2ndDerivativeTransform, &QAction::triggered, this, &PlotWidget::on_2ndDerivativeTransform_triggered);
 
-    _action_meanTransform = new QAction(tr("&Mean"), this);
-    _action_meanTransform->setCheckable( true );
-    connect(_action_meanTransform, &QAction::triggered, this, &PlotWidget::on_meanTransform_triggered);
-
-    _action_standardDeviationTransform = new QAction(tr("&Standard Deviation"), this);
-    _action_standardDeviationTransform->setCheckable( true );
-    connect(_action_standardDeviationTransform, &QAction::triggered, this, &PlotWidget::on_standardDeviationTransform_triggered);
-
     _action_fourierTransformTransform = new QAction(tr("&Fourier transform"), this);
     _action_fourierTransformTransform->setCheckable( true );
     connect(_action_fourierTransformTransform, &QAction::triggered, this, &PlotWidget::on_fourierTransformTransform_triggered);
@@ -209,8 +201,6 @@ void PlotWidget::buildActions()
     transform_group->addAction(_action_noTransform);
     transform_group->addAction(_action_1stDerivativeTransform);
     transform_group->addAction(_action_2ndDerivativeTransform);
-    transform_group->addAction(_action_meanTransform);
-    transform_group->addAction(_action_standardDeviationTransform);
     transform_group->addAction(_action_fourierTransformTransform);
     transform_group->addAction(_action_phaseXY);
 }
@@ -236,8 +226,6 @@ void PlotWidget::canvasContextMenuTriggered(const QPoint &pos)
     menu.addAction( _action_noTransform );
     menu.addAction( _action_1stDerivativeTransform );
     menu.addAction( _action_2ndDerivativeTransform );
-    menu.addAction( _action_meanTransform );
-    menu.addAction( _action_standardDeviationTransform );
     menu.addAction( _action_fourierTransformTransform );
     menu.addAction( _action_phaseXY );
     menu.addSeparator();
@@ -1148,55 +1136,6 @@ void PlotWidget::on_2ndDerivativeTransform_triggered(bool checked)
 
     this->setFooter(text);
     _current_transform = ( TimeseriesQwt::secondDerivative );
-
-    zoomOut(true);
-    replot();
-}
-
-void PlotWidget::on_meanTransform_triggered(bool checked)
-{
-    enableTracker(true);
-    if(_current_transform == TimeseriesQwt::mean) return;
-
-    for (auto it :_curve_list)
-    {
-        TimeseriesQwt* series = static_cast<TimeseriesQwt*>( it.second->data() );
-        series->setTransform( TimeseriesQwt::mean );
-        _point_marker[ it.first ]->setVisible(false);
-    }
-
-    QFont font_title;
-    font_title.setPointSize(10);
-    QwtText text("Mean");
-    text.setFont(font_title);
-
-    this->setFooter(text);
-    _current_transform = ( TimeseriesQwt::mean );
-
-    zoomOut(true);
-    replot();
-}
-
-void PlotWidget::on_standardDeviationTransform_triggered(bool checked)
-{
-    enableTracker(true);
-
-    if(_current_transform == TimeseriesQwt::standardDeviation) return;
-
-    for (auto it :_curve_list)
-    {
-        TimeseriesQwt* series = static_cast<TimeseriesQwt*>( it.second->data() );
-        series->setTransform( TimeseriesQwt::standardDeviation );
-        _point_marker[ it.first ]->setVisible(false);
-    }
-
-    QFont font_title;
-    font_title.setPointSize(10);
-    QwtText text("Standard deviation");
-    text.setFont(font_title);
-
-    this->setFooter(text);
-    _current_transform = ( TimeseriesQwt::standardDeviation );
 
     zoomOut(true);
     replot();

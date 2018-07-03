@@ -105,10 +105,6 @@ private slots:
 
     void on_2ndDerivativeTransform_triggered(bool checked);
 
-    void on_meanTransform_triggered(bool checked);
-
-    void on_standardDeviationTransform_triggered(bool checked);
-
     void on_fourierTransformTransform_triggered(bool checked);
 
     void on_convertToXY_triggered(bool checked);
@@ -139,8 +135,6 @@ private:
     QAction *_action_noTransform;
     QAction *_action_1stDerivativeTransform;
     QAction *_action_2ndDerivativeTransform;
-    QAction *_action_meanTransform;
-    QAction *_action_standardDeviationTransform;
     QAction *_action_fourierTransformTransform;
     QAction *_action_phaseXY;
     QAction *_action_saveToFile;

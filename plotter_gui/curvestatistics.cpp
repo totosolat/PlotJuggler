@@ -5,6 +5,7 @@
 #include <qwt_plot_curve.h>
 #include <QFontDatabase>
 #include <cmath>
+#include <limits>
 
 #include <iostream>
 using namespace std;
@@ -40,7 +41,18 @@ void CurveStatistics::actualiseValues()
 
         if( _visible )
         {
-            // Compute mean and standard deviation
+            // Compute min, max, mean and standard deviation
+            double min = std::numeric_limits<double>::max();
+            double max = std::numeric_limits<double>::min();
+            for (int k=0; k < curve->data()->size(); k++)
+            {
+              double value = curve->data()->sample(k).y();
+              if (value < min)
+                min = value;
+              else if (value > max)
+                max = value;
+            }
+
             double mean = 0.0;
             for (int k=0; k< curve->data()->size(); k++)
             {
@@ -56,11 +68,13 @@ void CurveStatistics::actualiseValues()
 
             // Add it to the text
             QString line;
+            QString str_min = QString::number(min, 'f', 4);
+            QString str_max = QString::number(max, 'f', 4);
             QString str_mean = QString::number(mean, 'f', 4);
             QString str_standard_deviation = QString::number(standard_deviation, 'e', 2);
 
-            line = QString( "<font color=%1>mean=%2 ; std_dev=%3 </font>" )
-                    .arg( color.name() ).arg(str_mean).arg(str_standard_deviation);
+            line = QString( "<font color=%1>min=%2 ; max=%3 ; mean=%4 ; std_dev=%5 </font>" )
+                    .arg(color.name()).arg(str_min).arg(str_max).arg(str_mean).arg(str_standard_deviation);
 
             text_lines.insert( std::make_pair(42.0, line) );    // FIXME: really useful?
         }

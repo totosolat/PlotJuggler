@@ -38,8 +38,6 @@ public:
       noTransform,
       firstDerivative,
       secondDerivative,
-      mean,
-      standardDeviation,
       fourierTransform,
       XYPlot
     } Transform;
