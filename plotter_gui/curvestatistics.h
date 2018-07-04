@@ -1,7 +1,7 @@
 #ifndef CURVESTATISTICS_H
 #define CURVESTATISTICS_H
 
-#include <qwt_plot_marker.h>
+#include <qwt_plot_textlabel.h>
 #include <qwt_plot.h>
 
 
@@ -18,11 +18,9 @@ public slots:
     void activate(bool activate);
 
 private:
-    std::vector<QwtPlotMarker*> _marker;
-    QwtPlotMarker* _text_marker;
+    QwtPlotTextLabel* _text_label;
     QwtPlot* _plot;
     bool _visible;
-
 
 };
 

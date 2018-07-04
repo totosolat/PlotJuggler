@@ -1,6 +1,6 @@
 #include "curvestatistics.h"
 
-#include <qwt_plot_marker.h>
+#include <qwt_plot_textlabel.h>
 #include <qwt_plot.h>
 #include <qwt_plot_curve.h>
 #include <QFontDatabase>
@@ -14,8 +14,8 @@ CurveStatistics::CurveStatistics(QwtPlot *plot):
     QObject(plot),
     _plot(plot)
 {
-    _text_marker = (new QwtPlotMarker);
-    _text_marker->attach(plot);
+    _text_label = (new QwtPlotTextLabel);
+    _text_label->attach(plot);
 
     _visible = true;
 }
@@ -31,7 +31,6 @@ void CurveStatistics::actualiseValues()
     rect.setLeft( _plot->canvasMap( QwtPlot::xBottom ).s1() );
     rect.setRight( _plot->canvasMap( QwtPlot::xBottom ).s2() );
 
-    double text_X_offset = 0;
     std::multimap<double,QString> text_lines;
 
     for ( int i = curves.size()-1; i >= 0; i-- )
@@ -101,13 +100,9 @@ void CurveStatistics::actualiseValues()
     mark_text.setBackgroundBrush( c );
     mark_text.setText( text_marker_info );
     mark_text.setFont(  QFontDatabase::systemFont(QFontDatabase::FixedFont) );
-    mark_text.setRenderFlags(Qt::AlignLeft);
+    mark_text.setRenderFlags( Qt::AlignLeft | Qt::AlignTop );
 
-    _text_marker->setLabel(mark_text);
-    _text_marker->setLabelAlignment( Qt::AlignRight );
-    _text_marker->setXValue(rect.left());
-    _text_marker->setYValue(0.5 * (rect.top() + rect.bottom()));
-    _text_marker->setVisible(_visible);
+    _text_label->setText( mark_text );
 
 }
 
