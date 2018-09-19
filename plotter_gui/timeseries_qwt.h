@@ -39,7 +39,9 @@ public:
       firstDerivative,
       secondDerivative,
       fourierTransform,
-      mvAvg50,
+	  mvAvg10,
+      mvAvg50, //MVAVG 50
+	  mvAvg100,
       XYPlot
     } Transform;
 

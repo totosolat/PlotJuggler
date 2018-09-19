@@ -108,7 +108,11 @@ private slots:
 
     void on_fourierTransformTransform_triggered(bool checked);
 
+	void on_mvAvg10Transform_triggered(bool checked);
+
     void on_mvAvg50Transform_triggered(bool checked); // MVAVG50
+
+	void on_mvAvg100Transform_triggered(bool checked);
 
     void on_convertToXY_triggered(bool checked);
 
@@ -139,7 +143,9 @@ private:
     QAction *_action_1stDerivativeTransform;
     QAction *_action_2ndDerivativeTransform;
     QAction *_action_fourierTransformTransform;
+    QAction *_action_mvAvg10Transform;
     QAction *_action_mvAvg50Transform; // MVAVG50
+    QAction *_action_mvAvg100Transform;
     QAction *_action_phaseXY;
     QAction *_action_saveToFile;
     QAction *_action_editLimits;
