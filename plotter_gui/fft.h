@@ -19,7 +19,7 @@ public:
 	// 	- x_data : xy dataset to process. The data are on the y axis, the corresponding times
 	//			   on the x axis
 	//	- f_data : final vector of points (f, Fourier(f))
-    void fft(const PlotDataPtr &x_data, std::vector<QPointF> &f_data);
+    void fft(const PlotData* &x_data, std::vector<QPointF> &f_data);
 
 private:
     typedef std::vector<std::complex<double>> ComplexVector;

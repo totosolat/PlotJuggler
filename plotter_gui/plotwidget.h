@@ -106,6 +106,8 @@ private slots:
 
     void on_2ndDerivativeTransform_triggered(bool checked);
 
+    void on_fourierTransformTransform_triggered(bool checked);
+
     void on_convertToXY_triggered(bool checked);
 
     void on_savePlotToFile();

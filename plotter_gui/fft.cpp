@@ -16,7 +16,7 @@ FFT::~FFT()
 }
 
 
-void FFT::fft(const PlotDataPtr &x_data, std::vector<QPointF> &f_data)
+void FFT::fft(const PlotData* &x_data, std::vector<QPointF> &f_data)
 {
     // Fill the _x vector
     size_t N = x_data->size();
