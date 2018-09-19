@@ -134,6 +134,33 @@ void TimeseriesQwt::updateData()
                 updateMinMax(_cached_transformed_curve[k].x(), _cached_transformed_curve[k].y());
 
         }
+    else if(_transform == mvAvg50) // MVAVG50
+    {
+        _cached_transformed_curve.resize(_plot_data->size());
+        double sum = 0.0;
+		double avg [_plot_data->size()];
+		double avg_num [_plot_data->size()];
+		int mvavglength = 50; // TODO: tunable from gui
+        for (size_t i=0; i< _plot_data->size(); i++ )
+        {
+			avg[i] = 0;
+			avg_num[i] = 0;
+			for (int j=0; j < i && j <= mvavglength -1 ; j++ )
+			{
+				const auto& p1 = _plot_data->at( i - j );
+				avg[i] += p1.y;
+				avg_num[i] += 1;
+			}
+        }
+        for (size_t i=0; i< _plot_data->size(); i++ )
+        {
+            const auto& p0 = _plot_data->at( i );
+            QPointF p(p0.x, avg[i]/avg_num[i]);
+            p.setX(p.x() - _time_offset);
+            _cached_transformed_curve[i] = p;
+            updateMinMax( p.x(), p.y() );
+        }
+    }
     else if( _transform == XYPlot && _alternative_X_axis)
     {
         bool failed = false;

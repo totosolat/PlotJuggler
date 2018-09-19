@@ -197,6 +197,10 @@ void PlotWidget::buildActions()
     _action_fourierTransformTransform->setCheckable( true );
     connect(_action_fourierTransformTransform, &QAction::triggered, this, &PlotWidget::on_fourierTransformTransform_triggered);
 
+    _action_mvAvg50Transform = new QAction(tr("&MvAvg 50"), this); // MVAVG50
+    _action_mvAvg50Transform->setCheckable( true ); 
+    connect(_action_mvAvg50Transform, &QAction::triggered, this, &PlotWidget::on_mvAvg50Transform_triggered);
+
     _action_phaseXY = new QAction(tr("&XY plot"), this);
     _action_phaseXY->setCheckable( true );
     connect(_action_phaseXY, &QAction::triggered, this, &PlotWidget::on_convertToXY_triggered);
@@ -213,6 +217,7 @@ void PlotWidget::buildActions()
     transform_group->addAction(_action_1stDerivativeTransform);
     transform_group->addAction(_action_2ndDerivativeTransform);
     transform_group->addAction(_action_fourierTransformTransform);
+    transform_group->addAction(_action_mvAvg50Transform); // MVAVG50
     transform_group->addAction(_action_phaseXY);
 }
 
@@ -238,6 +243,7 @@ void PlotWidget::canvasContextMenuTriggered(const QPoint &pos)
     menu.addAction( _action_1stDerivativeTransform );
     menu.addAction( _action_2ndDerivativeTransform );
     menu.addAction( _action_fourierTransformTransform );
+    menu.addAction( _action_mvAvg50Transform ); // MVAVG50
     menu.addAction( _action_phaseXY );
     menu.addSeparator();
     menu.addAction( _action_saveToFile );
@@ -1190,6 +1196,31 @@ void PlotWidget::on_fourierTransformTransform_triggered(bool checked)
     zoomOut(true);
     replot();
 }
+
+void PlotWidget::on_mvAvg50Transform_triggered(bool checked) // MVAVG50
+{
+    enableTracker(true);
+    if(_current_transform ==  TimeseriesQwt::mvAvg50) return;
+
+    for(auto& it: _curve_list)
+    {
+        TimeseriesQwt* series = static_cast<TimeseriesQwt*>( it.second->data() );
+        series->setTransform( TimeseriesQwt::mvAvg50 );
+        _point_marker[ it.first ]->setVisible(false);
+    }
+
+    QFont font_title;
+    font_title.setPointSize(10);
+    QwtText text("mvAvg50");
+    text.setFont(font_title);
+
+    this->setFooter(text);
+    _current_transform = ( TimeseriesQwt::mvAvg50 );
+
+    zoomOut(true);
+    replot();
+}
+
 
 bool PlotWidget::isXYPlot() const
 {
