@@ -49,11 +49,20 @@ public:
 
   typedef Value   ValueType;
 
-  PlotDataGeneric(const char* name);
+  PlotDataGeneric(const std::string& name);
+
+  PlotDataGeneric( const PlotDataGeneric<Time,Value>& other) = delete;
+
+  void swapData( PlotDataGeneric<Time,Value>& other)
+  {
+      std::swap(_points, other._points);
+  }
+
+  PlotDataGeneric& operator = (const PlotDataGeneric<Time,Value>& other) = delete;
 
   virtual ~PlotDataGeneric() {}
 
-  std::string name() const { return _name; }
+  const std::string& name() const { return _name; }
 
   virtual size_t size() const;
 
@@ -61,15 +70,13 @@ public:
 
   nonstd::optional<Value> getYfromX(Time x ) const;
 
-  const Point& at(size_t index) const;
+  const Point &at(size_t index) const;
+
+  Point &at(size_t index);
 
   void clear();
 
   void pushBack(Point p);
-
-  void pushBackAsynchronously(Point p);
-
-  bool flushAsyncBuffer();
 
   QColor getColorHint() const;
 
@@ -77,18 +84,22 @@ public:
 
   void setMaximumRangeX(Time max_range);
 
+  Time maximumRangeX() const { return _max_range_X; }
+
+  const Point& front() const { return _points.front(); }
+
+  const Point& back() const { return _points.back(); }
+
+  void popFront() { _points.pop_front(); }
+
 protected:
 
   std::string _name;
   std::deque<Point> _points;
-  std::deque<Point> _pushed_points;
-
   QColor _color_hint;
 
 private:
-
   Time _max_range_X;
-  std::mutex _mutex;
 };
 
 
@@ -96,13 +107,28 @@ typedef PlotDataGeneric<double,double>  PlotData;
 typedef PlotDataGeneric<double, nonstd::any> PlotDataAny;
 
 
-typedef std::shared_ptr<PlotData>     PlotDataPtr;
-typedef std::shared_ptr<PlotDataAny>  PlotDataAnyPtr;
-
 typedef struct{
-  std::unordered_map<std::string, PlotDataPtr>     numeric;
-  std::unordered_map<std::string, PlotDataAnyPtr>  user_defined;
-} PlotDataMap;
+  std::unordered_map<std::string, PlotData>     numeric;
+  std::unordered_map<std::string, PlotDataAny>  user_defined;
+
+  std::unordered_map<std::string, PlotData>::iterator addNumeric(const std::string& name)
+  {
+      return numeric.emplace( std::piecewise_construct,
+                       std::forward_as_tuple(name),
+                       std::forward_as_tuple(name)
+                       ).first;
+  }
+
+
+  std::unordered_map<std::string, PlotDataAny>::iterator addUserDefined(const std::string& name)
+  {
+      return user_defined.emplace( std::piecewise_construct,
+                                   std::forward_as_tuple(name),
+                                   std::forward_as_tuple(name)
+                                   ).first;
+  }
+
+} PlotDataMapRef;
 
 
 //-----------------------------------
@@ -117,7 +143,7 @@ typedef struct{
 //}
 
 template<typename Time, typename Value>
-inline PlotDataGeneric<Time, Value>::PlotDataGeneric(const char *name):
+inline PlotDataGeneric<Time, Value>::PlotDataGeneric(const std::string &name):
     _max_range_X( std::numeric_limits<Time>::max() )
     , _color_hint(Qt::black)
     , _name(name)
@@ -129,37 +155,13 @@ template < typename Time, typename Value>
 inline void PlotDataGeneric<Time, Value>::pushBack(Point point)
 {
   _points.push_back( point );
-}
-
-template < typename Time, typename Value>
-inline void PlotDataGeneric<Time, Value>::pushBackAsynchronously(Point point)
-{
-  std::lock_guard<std::mutex> lock(_mutex);
-  _pushed_points.push_back( point );
-  while(_pushed_points.size() > ASYNC_BUFFER_CAPACITY) _pushed_points.pop_front();
-}
-
-template < typename Time, typename Value>
-inline bool PlotDataGeneric<Time, Value>::flushAsyncBuffer()
-{
-  std::lock_guard<std::mutex> lock(_mutex);
-  if( _pushed_points.empty() ) return false;
-
-  while( !_pushed_points.empty() )
-  {
-      const Point& point = _pushed_points.front();
-      _points.push_back( point );
-      _pushed_points.pop_front();
-  }
 
   while( _points.size()>2 &&
-         _points.back().x - _points.front().x > _max_range_X)
+         (_points.back().x - _points.front().x) > _max_range_X)
   {
-      _points.pop_front();
+        _points.pop_front();
   }
-  return true;
 }
-
 
 template < typename Time, typename Value>
 inline int PlotDataGeneric<Time, Value>::getIndexFromX(Time x ) const
@@ -213,6 +215,13 @@ PlotDataGeneric<Time, Value>::at(size_t index) const
     return _points[index];
 }
 
+template < typename Time, typename Value>
+inline typename PlotDataGeneric<Time, Value>::Point&
+PlotDataGeneric<Time, Value>::at(size_t index)
+{
+    return _points[index];
+}
+
 template<typename Time, typename Value>
 void PlotDataGeneric<Time, Value>::clear()
 {
@@ -243,6 +252,11 @@ template < typename Time, typename Value>
 inline void PlotDataGeneric<Time, Value>::setMaximumRangeX(Time max_range)
 {
   _max_range_X = max_range;
+  while( _points.size()>2 &&
+         _points.back().x - _points.front().x > _max_range_X)
+  {
+        _points.pop_front();
+  }
 }
 
 #endif // PLOTDATA_H

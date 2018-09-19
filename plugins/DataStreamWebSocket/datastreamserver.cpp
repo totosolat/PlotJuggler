@@ -18,7 +18,6 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 #include <QInputDialog>
 
 DataStreamServer::DataStreamServer() :
-	_enabled(false),
 	_running(false),
 	_server("plotJuggler", QWebSocketServer::NonSecureMode)	
 {
@@ -63,8 +62,6 @@ void DataStreamServer::shutdown()
 		_server.close();
 		_running = false;
 	}
-	else
-		qDebug() << "Nothing to shutdown";
 }
 
 void DataStreamServer::onNewConnection()
@@ -80,6 +77,8 @@ void DataStreamServer::onNewConnection()
 
 void DataStreamServer::processMessage(QString message)
 {
+    std::lock_guard<std::mutex> lock( mutex() );
+
 	//qDebug() << "DataStreamServer: processMessage: "<< message;
 	QStringList lst = message.split(':');
 	if (lst.size() == 3) {
@@ -87,21 +86,18 @@ void DataStreamServer::processMessage(QString message)
 		double time = lst.at(1).toDouble();
 		double value = lst.at(2).toDouble();
 
-		auto& map = _plot_data.numeric;
+        auto& numeric_plots = dataMap().numeric;
 
 		const std::string name_str = key.toStdString();
-		auto plotIt = map.find(name_str);
+        auto plotIt = numeric_plots.find(name_str);
 		
-		if (plotIt == map.end()) {
-			//qDebug() << "Creating plot: " << key << '\t' << time << ":" << value;
-
-			PlotDataPtr plot(new PlotData(name_str.c_str()));
-
-			map.insert(std::make_pair(name_str, plot));
+        if (plotIt == numeric_plots.end())
+        {
+            dataMap().addNumeric(name_str);
 		}
-		else
-			;// qDebug() << "Using plot: " << key << '\t' << time << ":" << value;
-		map[name_str]->pushBackAsynchronously(PlotData::Point(time, value));
+        else{
+            plotIt->second.pushBack( {time, value} );
+        }
 	}	
 }
 

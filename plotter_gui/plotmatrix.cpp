@@ -9,7 +9,7 @@
 
 static int widget_uid = 0;
 
-PlotMatrix::PlotMatrix(QString name, PlotDataMap& datamap, QWidget *parent ):
+PlotMatrix::PlotMatrix(QString name, PlotDataMapRef &datamap, QWidget *parent ):
     QFrame( parent ),
     _mapped_data(datamap),
     _name(name)
@@ -269,8 +269,6 @@ bool PlotMatrix::xmlLoadState( QDomElement &plotmatrix )
     while( cols > _num_cols){ addColumn();  }
     while( cols < _num_cols){ removeColumn( _num_cols-1 ); }
 
-    QMessageBox::StandardButton load_answer = QMessageBox::Ok;
-
     QDomElement plot_element;
     for (  plot_element = plotmatrix.firstChildElement( "plot" )  ;
            !plot_element.isNull();
@@ -284,7 +282,7 @@ bool PlotMatrix::xmlLoadState( QDomElement &plotmatrix )
         unsigned row = plot_element.attribute("row").toUInt();
         unsigned col = plot_element.attribute("col").toUInt();
 
-        bool success = plotAt(row,col)->xmlLoadState( plot_element, &load_answer ) ;
+        bool success = plotAt(row,col)->xmlLoadState( plot_element ) ;
         if( !success )
         {
             return false;

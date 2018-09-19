@@ -106,6 +106,8 @@ private slots:
 
     void on_2ndDerivativeTransform_triggered(bool checked);
 
+    void on_fourierTransformTransform_triggered(bool checked);
+
     void on_convertToXY_triggered(bool checked);
 
     void on_savePlotToFile();
@@ -148,8 +150,13 @@ private:
     QwtPlotLegendItem* _legend;
     QwtPlotGrid* _grid;
 
+<<<<<<< HEAD
     bool _is_curveStatistics_initialised;
+
+    PlotDataMap& _mapped_data;
+=======
     PlotDataMapRef& _mapped_data;
+>>>>>>> 3baa736c6f980499fe8d1399f7bc1a48382f620e
     TimeseriesQwt::Transform _current_transform;
 
     bool addCurve(const std::string &name);
@@ -158,8 +165,6 @@ private:
 
     void buildLegend();
 
-    int   _fps_counter;
-    QTime _fps_timeStamp;
     bool _show_line_and_points;
 
     void setDefaultRangeX();

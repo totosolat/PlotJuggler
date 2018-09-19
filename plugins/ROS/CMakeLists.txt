@@ -1,5 +1,5 @@
 
-include_directories( ../ ${catkin_INCLUDE_DIRS}  )
+include_directories( ../  ${catkin_INCLUDE_DIRS}  )
 
 # Qt related stuff
 set(CMAKE_AUTOMOC ON)
@@ -21,12 +21,14 @@ SET( COMMON_SRC
     qnodedialog.cpp
     dialog_select_ros_topics.h
     dialog_select_ros_topics.cpp
+    dialog_with_itemlist.h
     )
 
 QT5_WRAP_UI ( COMMON_UI_SRC
     qnodedialog.ui
     rule_editing.ui
     dialog_select_ros_topics.ui
+    dialog_with_itemlist.ui
     )
 
 add_library( commonROS STATIC ${COMMON_SRC} ${COMMON_UI_SRC} )
@@ -40,6 +42,7 @@ target_link_libraries( commonROS
 #############
 SET( DATALOAD_SRC
     DataLoadROS/dataload_ros.cpp
+    ../../include/PlotJuggler/dataloader_base.h
     )
 
 add_library( DataLoadROS SHARED ${DATALOAD_SRC}  )
@@ -54,6 +57,7 @@ add_dependencies(DataLoadROS
 SET( DATASTREAM_SRC
     DataStreamROS/datastream_ROS.cpp
     DataStreamROS/datastream_ROS.h
+    ../../include/PlotJuggler/datastreamer_base.h
     )
 
 add_library( DataStreamROS SHARED ${DATASTREAM_SRC} )
@@ -68,6 +72,7 @@ add_dependencies(DataStreamROS
 SET( PUBLISHER_SRC
     TopicPublisherROS/statepublisher_rostopic.cpp
     TopicPublisherROS/statepublisher_rostopic.h
+    ../../include/PlotJuggler/statepublisher_base.h
     )
 
 QT5_WRAP_UI ( PUBLISHER_UI_SRC  )
@@ -87,6 +92,7 @@ SET( ROSOUT_SRC
     RosoutPublisher/logs_table_model.cpp
     RosoutPublisher/logwidget.cpp
     RosoutPublisher/modelfilter.cpp
+    ../../include/PlotJuggler/statepublisher_base.h
     )
 
 QT5_WRAP_UI ( ROSOUT_UI RosoutPublisher/logwidget.ui )

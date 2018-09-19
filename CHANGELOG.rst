@@ -2,6 +2,107 @@
 Changelog for package plotjuggler
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.8.4 (2018-09-17)
+------------------
+* add tooltip
+* fix issue #109
+* CMakeLists.txt add mac homebrew qt5 install directory (#111)
+* Merge pull request #107 from v-lopez/master
+* Fix dragging/deletion of hidden items
+* Contributors: Andrew Hundt, Davide Faconti, Victor Lopez
+
+1.8.3 (2018-08-24)
+------------------
+* bug fix (crash when detaching a _point_marker)
+* more informative error messages
+* cleanups
+* more compact view and larger dummyData
+* Contributors: Davide Faconti
+
+1.8.2 (2018-08-19)
+------------------
+* bug fix (crash from zombie PlotMatrix)
+* Contributors: Davide Faconti
+
+1.8.1 (2018-08-18)
+------------------
+* message moved back to the ROS plugin
+* More informative dialog (issue #100)
+* many improvements related to  FilteredTableListWidget, issue #103
+* Contributors: Davide Faconti
+
+1.8.0 (2018-08-17)
+------------------
+* fixing splash time
+* minor update
+* fix issue #49
+* README and splashscreen updates
+* Update ISSUE_TEMPLATE.md
+* F10 enhancement
+* preparing release 1.8.0
+* (speedup) skip _completer->addToCompletionTree altogether unless Prefix mode is active
+* avoid data copying when loading a datafile
+* fix issue #103
+* workaround for issue #100
+* trying to fix problem with time offset durinh streaming
+* removed enableStreaming from StreamingPlugins
+* several useless replot() calls removed
+* more conservative implementation of setTimeOffset
+* optimization
+* reduced a lot the amount of computation related to addCurve()
+* bug fix
+* Update .appveyor.yml
+* bug fix (_main_tabbed_widget is already included in TabbedPlotWidget::instances())
+* remove bug (crash at deleteDataOfSingleCurve)
+* make PlotData non-copyable
+* change in sthe state publisher API
+* shared_ptr removed. To be tested
+* WIP: changed the way data is shared
+* added suggestion from issue #105
+* skip empty dataMaps in importPlotDataMap() . Issue #105
+* fix issue #102 (grey background)
+* Contributors: Davide Faconti
+
+1.7.3 (2018-08-12)
+------------------
+* enhancement discussed in #104 Can clear buffer while streaming is active
+* adding enhancements 4 and 5 from issue #105
+* fixed bug reported in  #105
+* fix critical error
+* fix issue #101
+* Contributors: Davide Faconti
+
+1.7.2 (2018-08-10)
+------------------
+* Update .travis.yml
+* fixed potential thread safety problem
+* trying to apply changes discussed in issue #96
+* add transport hint
+* make hyperlinks clickable by allowing to open external links (#95)
+* Contributors: Davide Faconti, Romain Reignier
+
+* Update .travis.yml
+* fixed potential thread safety problem
+* trying to apply changes discussed in issue #96
+* add transport hint
+* make hyperlinks clickable by allowing to open external links (#95)
+* Contributors: Davide Faconti, Romain Reignier
+
+1.7.1 (2018-07-22)
+------------------
+* catch exceptions
+* fix resize of PlotData size. Reported in issue #94
+* Contributors: Davide Faconti
+
+1.7.0 (2018-07-19)
+------------------
+* fixing issue #93 (thread safety in XYPlot and streaming)
+* fix issue #92
+* bug fix
+* Issue #88 (#90)
+* Reorder header files to fix conflicts with boost and QT (#86)
+* Contributors: Davide Faconti, Enrique Fernández Perdomo
+
 1.6.2 (2018-05-19)
 ------------------
 * fixing issue introduced in bec2c74195d74969f9c017b9b718faf9be6c1687

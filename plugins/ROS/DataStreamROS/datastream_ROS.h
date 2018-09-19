@@ -20,15 +20,11 @@ public:
 
     DataStreamROS();
 
-    virtual PlotDataMap &getDataMap() override;
-
     virtual bool start() override;
 
     virtual void shutdown() override;
 
-    virtual void enableStreaming(bool enable) override;
-
-    virtual bool isStreamingRunning() const override;
+    virtual bool isRunning() const override;
 
     virtual ~DataStreamROS() override;
 
@@ -44,9 +40,6 @@ private:
 
     void topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg, const std::string &topic_name);
 
-    PlotDataMap _plot_data;
-
-    bool _enabled;
     bool _running;
 
     std::shared_ptr<ros::AsyncSpinner> _spinner;

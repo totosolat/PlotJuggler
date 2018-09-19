@@ -16,6 +16,7 @@
 #include <ros/callback_queue.h>
 #include <rosbag/bag.h>
 #include <topic_tools/shape_shifter.h>
+#include <ros/transport_hints.h>
 
 #include "../dialog_select_ros_topics.h"
 #include "../rule_editing.h"
@@ -26,7 +27,6 @@ DataStreamROS::DataStreamROS():
     _action_saveIntoRosbag(nullptr),
     _node(nullptr)
 {
-    _enabled = false;
     _running = false;
     _initial_time = std::numeric_limits<double>::max();
     _use_header_timestamp = true;
@@ -36,15 +36,10 @@ DataStreamROS::DataStreamROS():
              this, &DataStreamROS::timerCallback);
 }
 
-PlotDataMap& DataStreamROS::getDataMap()
-{
-    return _plot_data;
-}
-
 void DataStreamROS::topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg,
                                   const std::string &topic_name)
 {
-    if( !_running ||  !_enabled){
+    if( !_running ){
         return;
     }
 
@@ -58,12 +53,11 @@ void DataStreamROS::topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg
     RosIntrospectionFactory::registerMessage(topic_name, md5sum, datatype, definition );
 
     if( _using_renaming_rules ){
-      for (auto it: _rules)
+      for (auto& it: _rules)
       {
         _parser->registerRenamingRules( it.first, it.second );
       }
     }
-
 
     //------------------------------------
 
@@ -88,7 +82,7 @@ void DataStreamROS::topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg
 
     if(_use_header_timestamp)
     {
-        const auto header_stamp = FlatContainedContainHeaderStamp(renamed_value);
+        const auto header_stamp = FlatContainerContainHeaderStamp(renamed_value);
         if(header_stamp){
             const double time = header_stamp.value();
             if( time > 0 )
@@ -98,33 +92,50 @@ void DataStreamROS::topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg
         }
     }
 
+    std::lock_guard<std::mutex> lock( mutex() );
+
     // adding raw serialized msg for future uses.
     // do this before msg_time normalization
     {
         const std::string key = _prefix + topic_name;
-        auto plot_pair = _plot_data.user_defined.find( key );
-        if( plot_pair == _plot_data.user_defined.end() )
+        auto plot_pair = dataMap().user_defined.find( key );
+        if( plot_pair == dataMap().user_defined.end() )
         {
-            PlotDataAnyPtr temp(new PlotDataAny(key.c_str()));
-            auto res = _plot_data.user_defined.insert( std::make_pair( key, temp ) );
-            plot_pair = res.first;
+            plot_pair = dataMap().addUserDefined( key );
         }
-        PlotDataAnyPtr& user_defined_data = plot_pair->second;
-        user_defined_data->pushBack( PlotDataAny::Point(msg_time, nonstd::any(std::move(buffer)) ));
+        PlotDataAny& user_defined_data = plot_pair->second;
+        user_defined_data.pushBack( PlotDataAny::Point(msg_time, nonstd::any(std::move(buffer)) ));
     }
 
     for(auto& it: renamed_value )
     {
         const std::string key = ( _prefix + it.first  );
-        const double value = it.second.convert<double>();
-        auto plot_it = _plot_data.numeric.find(key);
-        if( plot_it == _plot_data.numeric.end())
+        const auto& value = it.second;
+        double val_d = 0.0;
+
+        // FIXME
+        // bypass the error checking in Variant::convert.
+        // Related to issue #100 on Github
+        if( value.getTypeID() == RosIntrospection::UINT64)
         {
-            auto res =   _plot_data.numeric.insert(
-                        std::make_pair( key, std::make_shared<PlotData>(key.c_str()) ));
-            plot_it = res.first;
+            uint64_t val_i = value.extract<uint64_t>();
+            val_d = static_cast<double>(val_i);
         }
-        plot_it->second->pushBackAsynchronously( PlotData::Point(msg_time, value));
+        else if( value.getTypeID() == RosIntrospection::INT64)
+        {
+            int64_t val_i = value.extract<int64_t>();
+            val_d = static_cast<double>(val_i);
+        }
+        else{
+            val_d = value.convert<double>();
+        }
+
+        auto plot_it = dataMap().numeric.find(key);
+        if( plot_it == dataMap().numeric.end())
+        {
+            plot_it = dataMap().addNumeric( key );
+        }
+        plot_it->second.pushBack( PlotData::Point(msg_time, val_d));
     }
 
     //------------------------------
@@ -132,14 +143,12 @@ void DataStreamROS::topicCallback(const topic_tools::ShapeShifter::ConstPtr& msg
         int& index = _msg_index[topic_name];
         index++;
         const std::string key = _prefix + topic_name + ("/_MSG_INDEX_") ;
-        auto index_it = _plot_data.numeric.find(key);
-        if( index_it == _plot_data.numeric.end())
+        auto index_it = dataMap().numeric.find(key);
+        if( index_it == dataMap().numeric.end())
         {
-            auto res = _plot_data.numeric.insert(
-                        std::make_pair( key, std::make_shared<PlotData>(key.c_str()) ));
-            index_it = res.first;
+            index_it = dataMap().addNumeric( key );
         }
-        index_it->second->pushBackAsynchronously( PlotData::Point(msg_time, index) );
+        index_it->second.pushBack( PlotData::Point(msg_time, index) );
     }
 }
 
@@ -158,7 +167,6 @@ void DataStreamROS::extractInitialSamples()
 
     auto start_time = system_clock::now();
 
-    _enabled = true;
     while ( system_clock::now() - start_time < (wait_time_ms) )
     {
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration(0.1));
@@ -170,7 +178,6 @@ void DataStreamROS::extractInitialSamples()
             break;
         }
     }
-    _enabled = false;
 
     if( progress_dialog.wasCanceled() == false )
     {
@@ -180,7 +187,7 @@ void DataStreamROS::extractInitialSamples()
 
 void DataStreamROS::timerCallback()
 {
-    if( _running && _enabled && ros::master::check() == false
+    if( _running && ros::master::check() == false
             && !_roscore_disconnection_already_notified)
     {
         auto ret = QMessageBox::warning(nullptr,
@@ -193,8 +200,8 @@ void DataStreamROS::timerCallback()
                                         tr("Try reconnect"),
                                         tr("Continue"),
                                         0);
-        _roscore_disconnection_already_notified = ( ret == 2);
-        if( ret == 1)
+        _roscore_disconnection_already_notified = ( ret == 2 );
+        if( ret == 1 )
         {
             this->shutdown();
             _node =  RosManager::getNode();
@@ -206,7 +213,6 @@ void DataStreamROS::timerCallback()
             subscribe();
 
             _running = true;
-            _enabled = true;
             _spinner = std::make_shared<ros::AsyncSpinner>(1);
             _spinner->start();
             _periodic_timer->start();
@@ -221,7 +227,8 @@ void DataStreamROS::timerCallback()
 
 void DataStreamROS::saveIntoRosbag()
 {
-    if( _plot_data.user_defined.empty()){
+    std::lock_guard<std::mutex> lock( mutex() );
+    if( dataMap().user_defined.empty()){
         QMessageBox::warning(0, tr("Warning"), tr("Your buffer is empty. Nothing to save.\n") );
         return;
     }
@@ -242,10 +249,10 @@ void DataStreamROS::saveIntoRosbag()
     {
         rosbag::Bag rosbag(fileName.toStdString(), rosbag::bagmode::Write );
 
-        for (auto it: _plot_data.user_defined )
+        for (const auto& it: dataMap().user_defined )
         {
             const std::string& topicname = it.first;
-            const PlotDataAnyPtr& plotdata = it.second;
+            const auto& plotdata = it.second;
 
             auto registered_msg_type = RosIntrospectionFactory::get().getShapeShifter(topicname);
             if(!registered_msg_type) continue;
@@ -255,9 +262,9 @@ void DataStreamROS::saveIntoRosbag()
                       registered_msg_type->getDataType(),
                       registered_msg_type->getMessageDefinition());
 
-            for (int i=0; i< plotdata->size(); i++)
+            for (int i=0; i< plotdata.size(); i++)
             {
-                const auto& point = plotdata->at(i);
+                const auto& point = plotdata.at(i);
                 const PlotDataAny::TimeType msg_time  = point.x;
                 const nonstd::any& type_erased_buffer = point.y;
 
@@ -290,13 +297,18 @@ void DataStreamROS::subscribe()
 
     for (int i=0; i< _default_topic_names.size(); i++ )
     {
-        boost::function<void(const topic_tools::ShapeShifter::ConstPtr&) > callback;
         const std::string topic_name = _default_topic_names[i].toStdString();
+        boost::function<void(const topic_tools::ShapeShifter::ConstPtr&) > callback;
         callback = [this, topic_name](const topic_tools::ShapeShifter::ConstPtr& msg) -> void
         {
             this->topicCallback(msg, topic_name) ;
         };
-        _subscribers.insert( {topic_name, _node->subscribe( topic_name, 0,  callback)}  );
+
+        ros::SubscribeOptions ops;
+        ops.initByFullCallbackType(topic_name, 1, callback);
+        ops.transport_hints = ros::TransportHints().tcpNoDelay();
+
+        _subscribers.insert( {topic_name, _node->subscribe(ops) }  );
     }
 }
 
@@ -312,9 +324,11 @@ bool DataStreamROS::start()
         return false;
     }
 
-
-    _plot_data.numeric.clear();
-    _plot_data.user_defined.clear();
+    {
+        std::lock_guard<std::mutex> lock( mutex() );
+        dataMap().numeric.clear();
+        dataMap().user_defined.clear();
+    }
     _initial_time = std::numeric_limits<double>::max();
 
     using namespace RosIntrospection;
@@ -403,10 +417,7 @@ bool DataStreamROS::start()
     return true;
 }
 
-void DataStreamROS::enableStreaming(bool enable) { _enabled = enable; }
-
-bool DataStreamROS::isStreamingRunning() const { return _running; }
-
+bool DataStreamROS::isRunning() const { return _running; }
 
 void DataStreamROS::shutdown()
 {
@@ -421,7 +432,6 @@ void DataStreamROS::shutdown()
     }
     _subscribers.clear();
     _running = false;
-    _enabled = false;
     _node.reset();
     _spinner.reset();
 }

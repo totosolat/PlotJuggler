@@ -9,8 +9,7 @@
 #include <thread>
 #include <math.h>
 
-DataStreamSample::DataStreamSample():
-    _enabled(false)
+DataStreamSample::DataStreamSample()
 {
     QStringList  words_list;
     words_list << "siam" << "tre" << "piccoli" << "porcellin"
@@ -41,9 +40,8 @@ DataStreamSample::DataStreamSample():
         }
 
         const std::string name_str = name.toStdString();
-        PlotDataPtr plot( new PlotData(name_str.c_str()) );
 
-        _plot_data.numeric.insert( std::make_pair( name_str, plot) );
+        dataMap().addNumeric(name_str);
         _parameters.insert( std::make_pair( name_str, param) );
     }
 }
@@ -62,9 +60,7 @@ void DataStreamSample::shutdown()
     if( _thread.joinable()) _thread.join();
 }
 
-void DataStreamSample::enableStreaming(bool enable) { _enabled = enable; }
-
-bool DataStreamSample::isStreamingRunning() const { return _running; }
+bool DataStreamSample::isRunning() const { return _running; }
 
 DataStreamSample::~DataStreamSample()
 {
@@ -83,12 +79,14 @@ bool DataStreamSample::xmlLoadState(QDomElement &parent_element)
 
 void DataStreamSample::pushSingleCycle()
 {
+    std::lock_guard<std::mutex> lock( mutex() );
+
     using namespace std::chrono;
     static std::chrono::high_resolution_clock::time_point initial_time = high_resolution_clock::now();
     const double offset = duration_cast< duration<double>>( initial_time.time_since_epoch() ).count() ;
 
     auto now =  high_resolution_clock::now();
-    for (auto& it: _plot_data.numeric )
+    for (auto& it: dataMap().numeric )
     {
         auto par = _parameters[it.first];
 
@@ -96,8 +94,7 @@ void DataStreamSample::pushSingleCycle()
         const double t = duration_cast< duration<double>>( now - initial_time ).count() ;
         double y =  par.A*sin(par.B*t + par.C) + par.D*t*0.05;
 
-        // IMPORTANT: don't use pushBack(), it may cause a segfault
-        plot->pushBackAsynchronously( PlotData::Point( t + offset, y ) );
+        plot.pushBack( PlotData::Point( t + offset, y ) );
     }
 }
 
@@ -106,9 +103,7 @@ void DataStreamSample::loop()
     _running = true;
     while( _running )
     {
-        if( _enabled ){
-            pushSingleCycle();
-        }
+        pushSingleCycle();
         std::this_thread::sleep_for ( std::chrono::milliseconds(10) );
     }
 }

@@ -33,9 +33,12 @@ SET( PLOTTER_SRC
     filterablelistwidget.cpp
     tabbedplotwidget.cpp
     subwindow.cpp
-    tree_completer.h
+<<<<<<< HEAD
     fft.cpp
     curvestatistics.cpp
+=======
+    tree_completer.h
+>>>>>>> 3baa736c6f980499fe8d1399f7bc1a48382f620e
 
     mainwindow.h
     realslider.h
