@@ -56,6 +56,7 @@ public:
 
 protected:
     virtual void dragEnterEvent(QDragEnterEvent *event) override;
+    virtual void dragMoveEvent(QDragMoveEvent *event) override;
     virtual void dropEvent(QDropEvent *event) override;
     virtual bool eventFilter(QObject *obj, QEvent *event) override;
     virtual void dragLeaveEvent(QDragLeaveEvent *event) override;
@@ -152,6 +153,16 @@ private:
 
     void buildLegend();
 
+    bool IsPointOnXAxis(const QPoint &p);
+    enum class PlotHoverMode
+    {
+        NONE,
+        ON_CANVAS,
+        ON_X_AXIS
+    };
+    void drawPlotHover(PlotHoverMode mode);
+    PlotHoverMode m_currentPlotHoverMode = PlotHoverMode::NONE;
+
     bool _show_line_and_points;
 
     void setDefaultRangeX();
@@ -159,6 +170,8 @@ private:
     const PlotData* _axisX = nullptr;
 
     double _time_offset;
+
+    bool _dragging_single_curve;
 
     PlotData::RangeValue _custom_Y_limits;
 
