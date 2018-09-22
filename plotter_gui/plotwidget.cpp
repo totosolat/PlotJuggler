@@ -3,6 +3,8 @@
 #include <QDrag>
 #include <QMimeData>
 #include <QDragEnterEvent>
+#include <QDragMoveEvent>
+#include <qwt_scale_widget.h>
 #include <qwt_plot_canvas.h>
 #include <qwt_scale_engine.h>
 #include <qwt_plot_layout.h>
@@ -276,6 +278,51 @@ void PlotWidget::buildLegend()
     _legend->setVisible( true );
 }
 
+bool PlotWidget::IsPointOnXAxis(const QPoint &p)
+{
+    QwtScaleWidget *bottomAxis = axisWidget(xBottom);
+    if(bottomAxis)
+    {
+        QPoint pInAxisWidget = bottomAxis->mapFrom(this, p);
+        return bottomAxis->rect().contains(pInAxisWidget);
+    }
+    return false;
+}
+
+void PlotWidget::drawPlotHover(PlotWidget::PlotHoverMode mode)
+{
+    if(mode != m_currentPlotHoverMode)
+    {
+        if(mode == PlotHoverMode::ON_CANVAS)
+        {
+            this->setCanvasBackground( QColor( 230, 230, 230 ) );
+        }
+        else
+        {
+            this->setCanvasBackground( QColor( 250, 250, 250 ) );
+        }
+
+        QwtScaleWidget *bottomAxis = axisWidget(xBottom);
+        if(bottomAxis)
+        {
+            QPalette pal = bottomAxis->palette();
+            if(mode == PlotHoverMode::ON_X_AXIS)
+            {
+                pal.setColor(QPalette::Background, QColor( 230, 230, 230 ));
+            }
+            else
+            {
+                pal.setColor(QPalette::Background, QColor( 250, 250, 250 ));
+            }
+            bottomAxis->setAutoFillBackground(true);
+            bottomAxis->setPalette(pal);
+        }
+
+        replot();
+        m_currentPlotHoverMode = mode;
+    }
+}
+
 
 
 PlotWidget::~PlotWidget()
@@ -394,8 +441,7 @@ const std::map<std::string, std::shared_ptr<QwtPlotCurve> > &PlotWidget::curveLi
 
 void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
 {
-    changeBackgroundColor( QColor( 230, 230, 230 ) );
-
+    _dragging_single_curve = false;
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
     for(const QString& format: mimeFormats)
@@ -403,8 +449,23 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
         QByteArray encoded = mimeData->data( format );
         QDataStream stream(&encoded, QIODevice::ReadOnly);
 
-        if( format.contains( "curveslist") )
+        if( format.contains( "curveslist/add_curve") )
         {
+            int curve_count = 0;
+            while (!stream.atEnd())
+            {
+                QString curve_name;
+                stream >> curve_name;
+                curve_count++;
+            }
+            _dragging_single_curve = (curve_count == 1);
+
+            auto mode = ( IsPointOnXAxis(event->pos()) && _dragging_single_curve) ?
+                        PlotHoverMode::ON_X_AXIS :
+                        PlotHoverMode::ON_CANVAS;
+
+            drawPlotHover(mode);
+
             event->acceptProposedAction();
         }
         if( format.contains( "plot_area")  )
@@ -419,15 +480,29 @@ void PlotWidget::dragEnterEvent(QDragEnterEvent *event)
     }
 }
 
+void PlotWidget::dragMoveEvent(QDragMoveEvent *event)
+{
+
+    if(IsPointOnXAxis(event->pos()) && _dragging_single_curve)
+    {
+        drawPlotHover(PlotHoverMode::ON_X_AXIS);
+    }
+    else
+    {
+        drawPlotHover(PlotHoverMode::ON_CANVAS);
+    }
+}
+
 
 void PlotWidget::dragLeaveEvent(QDragLeaveEvent*)
 {
-    changeBackgroundColor( QColor( 250, 250, 250 ) );
+    drawPlotHover(PlotHoverMode::NONE);
+    _dragging_single_curve = false;
 }
 
 void PlotWidget::dropEvent(QDropEvent *event)
 {
-    setCanvasBackground( QColor( 250, 250, 250 ) );
+    drawPlotHover(PlotHoverMode::NONE);
 
     const QMimeData *mimeData = event->mimeData();
     QStringList mimeFormats = mimeData->formats();
@@ -439,29 +514,36 @@ void PlotWidget::dropEvent(QDropEvent *event)
 
         if( format.contains( "curveslist/add_curve") )
         {
-            bool curve_added = false;
-            while (!stream.atEnd())
+            bool needs_refresh = false;
+            if( IsPointOnXAxis(event->pos()) && _dragging_single_curve)
             {
                 QString curve_name;
                 stream >> curve_name;
-                bool added = addCurve( curve_name.toStdString() );
-                curve_added = curve_added || added;
+                changeAxisX(curve_name);
+                _dragging_single_curve = false;
+                event->acceptProposedAction();
+                needs_refresh = true;
             }
-            if( curve_added )
+            else
+            {
+                while (!stream.atEnd())
+                {
+                    QString curve_name;
+                    stream >> curve_name;
+                    if( addCurve( curve_name.toStdString() ) )
+                    {
+                        needs_refresh = true;
+                    }
+                }
+	            event->acceptProposedAction();
+            }          
+            if( needs_refresh )
             {
                 zoomOut(false);
                 replot();
                 emit curveListChanged();
                 emit undoableChange();
             }
-            event->acceptProposedAction();
-        }
-        else if( format.contains( "curveslist/new_X_axis") )
-        {
-            QString curve_name;
-            stream >> curve_name;
-            changeAxisX(curve_name);
-            event->acceptProposedAction();
         }
         else if( format.contains( "plot_area") )
         {
@@ -1156,8 +1238,7 @@ void PlotWidget::on_convertToXY_triggered(bool)
     {
         QMessageBox::warning(0, tr("Warning"),
                              tr("To show a XY plot, you must first provide an alternative X axis.\n"
-                                "You can do this drag'n dropping a curve using the RIGHT mouse button "
-                                "instead of the left mouse button.") );
+                                "You can do this drag'n dropping a curve on the x axis") );
 
         if( _current_transform == TimeseriesQwt::noTransform)
         {
