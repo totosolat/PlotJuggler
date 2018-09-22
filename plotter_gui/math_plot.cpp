@@ -1,114 +1,117 @@
 #include "math_plot.h"
-#include <QJSEngine>
+
 #include <QFile>
 #include <QMessageBox>
 
-MathPlot::MathPlot(const std::string &linkedPlot, const std::string &plotName, const QString &globalVars, const QString &equation):
+MathPlot::MathPlot(const std::string &linkedPlot,
+                   const std::string &plotName,
+                   const QString &globalVars,
+                   const QString &equation):
     _linkedPlot(linkedPlot),
     _plotName(plotName),
     _globalVars(globalVars),
     _calcEquation(equation),
-    _plot_data("")
+    _plot_data(plotName)
 {
+    addJavascriptDependencies(_jsEngine);
 
-}
-
-void MathPlot::refresh(PlotDataMapRef &plotData)
-{
     QString qLinkedPlot = QString::fromStdString(_linkedPlot);
-    QJSEngine jsEngine;
 
-    addJavascriptDependencies(jsEngine);
-
-    QList<PlotData*> usedChannels;
-    QString mathEquationReplaced = _calcEquation;
+    QString replaced_equation = _calcEquation;
     while(true)
     {
-        int pos1=mathEquationReplaced.indexOf("$$");
-        if(pos1 == -1)
+        int pos1=replaced_equation.indexOf("$$");
+        if(pos1 == -1){
             break;
+        }
 
-        int pos2 = mathEquationReplaced.indexOf("$$", pos1+2);
+        int pos2 = replaced_equation.indexOf("$$", pos1+2);
         if(pos2 == -1)
         {
             throw std::runtime_error("syntax error : invalid use of $$ macro");
         }
 
-        QString channelName = mathEquationReplaced.mid(pos1+2, pos2-pos1-2);
+        QString channel_name = replaced_equation.mid(pos1+2, pos2-pos1-2);
 
-        if(channelName == qLinkedPlot)
+        if(channel_name == qLinkedPlot)
         {
             // special case : user entered linkedPlot ; no need to add another channel
-            mathEquationReplaced.replace(QStringLiteral("$$%1$$").arg(channelName), QStringLiteral("y"));
+            replaced_equation.replace(QStringLiteral("$$%1$$").arg(channel_name), QStringLiteral("value"));
         }
         else
         {
-            QString jsExpression = QString("CHANNEL_VALUES[%1]").arg(usedChannels.size());
-            mathEquationReplaced.replace(QStringLiteral("$$%1$$").arg(channelName), jsExpression);
-
-            auto plotDataIt = plotData.numeric.find(channelName.toStdString());
-            if(plotDataIt == plotData.numeric.end())
-            {
-                throw std::runtime_error("invalid channel");
-            }
-
-            usedChannels.push_back(&plotDataIt->second);
+            QString jsExpression = QString("CHANNEL_VALUES[%1]").arg(_used_channels.size());
+            replaced_equation.replace(QStringLiteral("$$%1$$").arg(channel_name), jsExpression);
+            _used_channels.push_back(channel_name.toStdString());
         }
     }
-    //qDebug() << "final equation string : " << mathEquationReplaced;
-    QJSValue globalVarResult = jsEngine.evaluate(_globalVars);
+    _calcEquation = replaced_equation;
+
+    //qDebug() << "final equation string : " << replaced_equation;
+
+    QJSValue globalVarResult = _jsEngine.evaluate(_globalVars);
     if(globalVarResult.isError())
     {
         throw std::runtime_error("JS Engine : " + globalVarResult.toString().toStdString());
     }
+    QString calcMethodStr = QString("function calc(time, value, CHANNEL_VALUES){with (Math){\n%1\n}}").arg(_calcEquation);
+    _jsEngine.evaluate(calcMethodStr);
+}
 
-    QString calcMethodStr = QString("function calc(x, y, CHANNEL_VALUES){with (Math){\n%1\n}}").arg(mathEquationReplaced);
-    jsEngine.evaluate(calcMethodStr);
-    QJSValue calcFct = jsEngine.evaluate("calc");
+void MathPlot::refresh(const PlotDataMapRef &plotData)
+{
+    QJSValue calcFct = _jsEngine.evaluate("calc");
+
     if(calcFct.isError())
     {
         throw std::runtime_error("JS Engine : " + calcFct.toString().toStdString());
     }
 
-    PlotData *srcPlotData;
-    auto srcPlotDataIt = plotData.numeric.find(_linkedPlot);
-    if(srcPlotDataIt == plotData.numeric.end())
+    auto src_data_it = plotData.numeric.find(_linkedPlot);
+    if(src_data_it == plotData.numeric.end())
     {
         throw std::runtime_error("invalid linked data channel");
     }
-    srcPlotData = &srcPlotDataIt->second;
+    const PlotData *src_data = &src_data_it->second;
 
     _plot_data.clear();
 
-    for(size_t i=0;i<srcPlotData->size();++i)
+    for(size_t i=0; i < src_data->size(); ++i)
     {
-        const PlotData::Point &oldPoint = srcPlotData->at(i);
+        const PlotData::Point &old_point = src_data->at(i);
 
-        QJSValue channelValues = jsEngine.newArray(static_cast<quint32>(usedChannels.size()));
-        for(int channelIndex = 0; channelIndex<usedChannels.size(); ++channelIndex)
+        QJSValue chan_values = _jsEngine.newArray(static_cast<quint32>(_used_channels.size()));
+        for(int chan_index = 0; chan_index < _used_channels.size(); ++chan_index)
         {
-            PlotData *channelData = usedChannels[channelIndex];
+            const auto& channel = _used_channels[chan_index];
+            auto it = plotData.numeric.find(channel);
+            if(it == plotData.numeric.end())
+            {
+                throw std::runtime_error("Invalid channel name");
+            }
+            const PlotData* chan_data = &(it->second);
+
             double value;
-            int index = channelData->getIndexFromX(oldPoint.x);
+            int index = chan_data->getIndexFromX(old_point.x);
             if(index != -1)
-                value = channelData->at(static_cast<size_t>(index)).y;
+                value = chan_data->at(static_cast<size_t>(index)).y;
             else
                 value = std::numeric_limits<double>::quiet_NaN();
 
-            channelValues.setProperty(static_cast<quint32>(channelIndex), QJSValue(value));
+            chan_values.setProperty(static_cast<quint32>(chan_index), QJSValue(value));
         }
 
-        PlotData::Point newPoint;
-        newPoint.x = oldPoint.x;
-        //jsEngine.globalObject().setProperty("CHANNEL_VALUES", channelValues); // this would be another method to share the array
-        QJSValue jsData = calcFct.call({QJSValue(oldPoint.x), QJSValue(oldPoint.y), channelValues});
+        PlotData::Point new_point;
+        new_point.x = old_point.x;
+        //jsEngine.globalObject().setProperty("CHANNEL_VALUES", chan_values); // this would be another method to share the array
+        QJSValue jsData = calcFct.call({QJSValue(old_point.x), QJSValue(old_point.y), chan_values});
         if(jsData.isError())
         {
             throw std::runtime_error("JS Engine : " + jsData.toString().toStdString());
         }
-        newPoint.y = jsData.toNumber();
+        new_point.y = jsData.toNumber();
 
-        _plot_data.pushBack(newPoint);
+        _plot_data.pushBack(new_point);
     }
 }
 

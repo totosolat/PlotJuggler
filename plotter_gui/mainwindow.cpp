@@ -876,6 +876,12 @@ void MainWindow::deleteDataMultipleCurves(const std::vector<std::string> &curve_
         emit requestRemoveCurveByName( curve_name );
         _mapped_plot_data.numeric.erase( plot_curve );
 
+        auto math_curve = _mapped_math_plots.find( curve_name );
+        if( math_curve != _mapped_math_plots.end())
+        {
+            _mapped_math_plots.erase( math_curve );
+        }
+
         int row = _curvelist_widget->findRowByName( curve_name );
         if( row != -1 )
         {

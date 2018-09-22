@@ -22,7 +22,8 @@ class FilterableListWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr>& mapped_math_plots, QWidget *parent = 0);
+    explicit FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr>& mapped_math_plots,
+                                  QWidget *parent = 0);
     ~FilterableListWidget();
 
     int rowCount() const;
@@ -74,6 +75,8 @@ private slots:
     void removeSelectedCurves();
 
     void on_buttonAddCustom_pressed();
+
+    void on_buttonRefreshAll_pressed();
 
 private:
 
