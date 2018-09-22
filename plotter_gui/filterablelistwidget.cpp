@@ -34,7 +34,7 @@ private:
 
 //-------------------------------------------------
 
-FilterableListWidget::FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr>& mapped_math_plots,
+FilterableListWidget::FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr> &mapped_math_plots,
                                            QWidget *parent) :
     QWidget(parent),
     ui(new Ui::FilterableListWidget),
@@ -453,4 +453,13 @@ void FilterableListWidget::on_buttonAddCustom_pressed()
         createMathPlot( curve_names.front() );
     }
     on_lineEdit_textChanged( ui->lineEdit->text() );
+}
+
+void FilterableListWidget::on_buttonRefreshAll_pressed()
+{
+    for(auto& mp: _mapped_math_plots)
+    {
+        emit refreshMathPlot( mp.first );
+    }
+
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <QWidget>
 #include <QString>
+#include <QJSEngine>
 #include <include/PlotJuggler/plotdata.h>
 
 class MathPlot;
@@ -18,7 +19,7 @@ public:
              const QString &globalVars,
              const QString &equation);
 
-    void refresh(PlotDataMapRef &plotData);
+    void refresh(const PlotDataMapRef &plotData);
 
     const std::string& getName() const;
     const std::string& getLinkedPlot() const;
@@ -34,5 +35,7 @@ private:
     QString _globalVars;
     QString _calcEquation;
     PlotData _plot_data;
+    QJSEngine _jsEngine;
+    std::vector<std::string> _used_channels;
 };
 
