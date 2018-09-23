@@ -82,4 +82,40 @@ return r.s12 // distance in meters
         </equation>
     </snippet>
 
+    <snippet name="Integral">
+        <global>
+lasttime = 0
+dt = 0
+init = false
+integral = 0
+        </global>
+        <equation>
+if (init == false){
+	lasttime = time
+	init = true
+}
+dt = time-lasttime
+lasttime = time
+integral = integral + dt*value
+return integral
+        </equation>
+    </snippet>
+
+    <snippet name="DeltaT">
+        <global>
+lasttime = 0
+dt = 0
+init = false
+        </global>
+        <equation>
+if (init == false){
+	lasttime = time
+	init = true
+}
+dt = time-lasttime
+lasttime = time
+return dt
+        </equation>
+    </snippet>
+
 </snippets>
