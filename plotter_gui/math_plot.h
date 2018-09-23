@@ -4,6 +4,7 @@
 #include <string>
 #include <QWidget>
 #include <QString>
+#include <QDomDocument>
 #include <QJSEngine>
 #include <include/PlotJuggler/plotdata.h>
 
@@ -21,11 +22,19 @@ public:
 
     void refresh(const PlotDataMapRef &plotData);
 
-    const std::string& getName() const;
-    const std::string& getLinkedPlot() const;
-    const QString& getGlobalVars() const;
-    const QString& getEquation() const;
+    const std::string& name() const;
+
+    const std::string& linkedPlotName() const;
+
+    const QString& globalVars() const;
+
+    const QString& equation() const;
+
     PlotData& plotData();
+
+    QDomElement xmlSaveState(QDomDocument &doc) const;
+
+    bool xmlLoadState(QDomElement &plotmatrix_element );
 
 private:
     void addJavascriptDependencies(QJSEngine &engine);
@@ -35,7 +44,6 @@ private:
     QString _globalVars;
     QString _calcEquation;
     PlotData _plot_data;
-    QJSEngine _jsEngine;
     std::vector<std::string> _used_channels;
 };
 

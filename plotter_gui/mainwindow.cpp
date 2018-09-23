@@ -2020,7 +2020,7 @@ void MainWindow::onRefreshMathPlot(const std::string &plot_name)
 
 void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
 {
-    AddMathPlotDialog dialog(_mapped_plot_data, this);
+    AddMathPlotDialog dialog(_mapped_plot_data, _mapped_math_plots, this);
     if(!edit)
     {
         // add

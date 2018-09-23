@@ -22,11 +22,13 @@ class AddMathPlotDialog : public QDialog
     };
 
 public:
-    explicit AddMathPlotDialog(PlotDataMapRef &plotMapData, QWidget *parent);
+    explicit AddMathPlotDialog(const PlotDataMapRef &plotMapData,
+                               const std::unordered_map<std::string, MathPlotPtr>& _mapped_math_plots,
+                               QWidget *parent);
     virtual ~AddMathPlotDialog() override;
 
     void setLinkedPlotName(const QString &linkedPlotName);
-    void accept() override;
+    virtual void accept() override;
 
     QString getLinkedData() const;
     QString getGlobalVars() const;
@@ -44,14 +46,23 @@ private slots:
 
     void on_snippetsListWidget_doubleClicked(const QModelIndex &index);
 
-private:
-    static const std::vector<SnippetData> getSnippets();
+    void on_snippetsListRecent_currentRowChanged(int currentRow);
 
-    PlotDataMapRef &_plotMapData;
+    void on_snippetsListRecent_doubleClicked(const QModelIndex &index);
+
+private:
+    void createSnippets();
+
+
+    const PlotDataMapRef &_plot_map_data;
+    const std::unordered_map<std::string, MathPlotPtr> &_math_plots;
     Ui::AddMathPlotDialog *ui;
 
-    MathPlotPtr _mathPlot;
+    MathPlotPtr _plot;
     bool _isNewPlot = true;
+
+    std::vector<SnippetData> _snipped_examples;
+    std::vector<SnippetData> _snipped_recent;
 };
 
 #endif // AddMathPlotDialog_H
