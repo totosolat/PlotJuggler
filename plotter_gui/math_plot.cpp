@@ -13,7 +13,6 @@ MathPlot::MathPlot(const std::string &linkedPlot,
     _calcEquation(equation),
     _plot_data(plotName)
 {
-    addJavascriptDependencies(_jsEngine);
 
     QString qLinkedPlot = QString::fromStdString(_linkedPlot);
 
@@ -49,18 +48,23 @@ MathPlot::MathPlot(const std::string &linkedPlot,
 
     //qDebug() << "final equation string : " << replaced_equation;
 
-    QJSValue globalVarResult = _jsEngine.evaluate(_globalVars);
+}
+
+void MathPlot::refresh(const PlotDataMapRef &plotData)
+{
+    QJSEngine jsEngine;
+
+    addJavascriptDependencies(jsEngine);
+
+    QJSValue globalVarResult = jsEngine.evaluate(_globalVars);
     if(globalVarResult.isError())
     {
         throw std::runtime_error("JS Engine : " + globalVarResult.toString().toStdString());
     }
     QString calcMethodStr = QString("function calc(time, value, CHANNEL_VALUES){with (Math){\n%1\n}}").arg(_calcEquation);
-    _jsEngine.evaluate(calcMethodStr);
-}
+    jsEngine.evaluate(calcMethodStr);
 
-void MathPlot::refresh(const PlotDataMapRef &plotData)
-{
-    QJSValue calcFct = _jsEngine.evaluate("calc");
+    QJSValue calcFct = jsEngine.evaluate("calc");
 
     if(calcFct.isError())
     {
@@ -80,7 +84,7 @@ void MathPlot::refresh(const PlotDataMapRef &plotData)
     {
         const PlotData::Point &old_point = src_data->at(i);
 
-        QJSValue chan_values = _jsEngine.newArray(static_cast<quint32>(_used_channels.size()));
+        QJSValue chan_values = jsEngine.newArray(static_cast<quint32>(_used_channels.size()));
         for(int chan_index = 0; chan_index < _used_channels.size(); ++chan_index)
         {
             const auto& channel = _used_channels[chan_index];
@@ -115,22 +119,22 @@ void MathPlot::refresh(const PlotDataMapRef &plotData)
     }
 }
 
-const std::string &MathPlot::getName() const
+const std::string &MathPlot::name() const
 {
     return _plotName;
 }
 
-const std::string &MathPlot::getLinkedPlot() const
+const std::string &MathPlot::linkedPlotName() const
 {
     return _linkedPlot;
 }
 
-const QString &MathPlot::getGlobalVars() const
+const QString &MathPlot::globalVars() const
 {
     return _globalVars;
 }
 
-const QString &MathPlot::getEquation() const
+const QString &MathPlot::equation() const
 {
     return _calcEquation;
 }
@@ -159,3 +163,24 @@ void MathPlot::addJavascriptDependencies(QJSEngine &engine)
 }
 
 
+
+QDomElement MathPlot::xmlSaveState(QDomDocument &doc) const
+{
+    QDomElement snippet = doc.createElement("snippet");
+    snippet.setAttribute("name", QString::fromStdString(_plotName) );
+
+    QDomElement global = doc.createElement("global");
+    global.setNodeValue( _globalVars );
+    snippet.appendChild(global);
+
+    QDomElement equation = doc.createElement("equation");
+    equation.setNodeValue( _calcEquation );
+    snippet.appendChild(equation);
+
+    return snippet;
+}
+
+bool MathPlot::xmlLoadState(QDomElement &plotmatrix_element)
+{
+
+}

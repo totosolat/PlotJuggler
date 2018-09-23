@@ -9,12 +9,17 @@
 #include "math_plot.h"
 #include "plotwidget.h"
 
-AddMathPlotDialog::AddMathPlotDialog(PlotDataMapRef &plotMapData, QWidget *parent) :
+AddMathPlotDialog::AddMathPlotDialog(const PlotDataMapRef &plotMapData,
+                                     const std::unordered_map<std::string, MathPlotPtr> &mapped_math_plots,
+                                     QWidget *parent) :
     QDialog(parent),
-    _plotMapData(plotMapData),
+    _plot_map_data(plotMapData),
+    _math_plots(mapped_math_plots),
     ui(new Ui::AddMathPlotDialog)
 {
     ui->setupUi(this);
+
+    this->setWindowTitle("Create a custom timeseries (EXPERIMENTAL)");
 
     const QFont fixedFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     ui->globalVarsTextField->setFont(fixedFont);
@@ -34,11 +39,7 @@ AddMathPlotDialog::AddMathPlotDialog(PlotDataMapRef &plotMapData, QWidget *paren
         ui->curvesListWidget->addItem(name);
     }
 
-    const auto& snippets = getSnippets();
-    for(const SnippetData &d : snippets)
-    {
-        ui->snippetsListWidget->addItem(d.name);
-    }
+    createSnippets();
 }
 
 AddMathPlotDialog::~AddMathPlotDialog()
@@ -58,7 +59,7 @@ void AddMathPlotDialog::accept()
         if(_isNewPlot)
         {
             // check if name is unique
-            if(_plotMapData.numeric.count(plotName) != 0)
+            if(_plot_map_data.numeric.count(plotName) != 0)
             {
                 throw std::runtime_error("plot name already exists");
             }
@@ -67,13 +68,13 @@ void AddMathPlotDialog::accept()
                                                           plotName,
                                                           getGlobalVars(),
                                                           getEquation());
-        mathPlot->refresh(_plotMapData);
+        mathPlot->refresh(_plot_map_data);
 
-        _mathPlot = mathPlot;
+        _plot = mathPlot;
         QDialog::accept();
     }
     catch (const std::runtime_error &e) {
-        _mathPlot.reset();
+        _plot.reset();
 
         QMessageBox::critical(this, "Error", "Failed to create math plot : " + QString::fromStdString(e.what()));
     }
@@ -101,16 +102,16 @@ QString AddMathPlotDialog::getName() const
 
 const PlotData& AddMathPlotDialog::getPlotData() const
 {
-    return _mathPlot->plotData();
+    return _plot->plotData();
 }
 
 void AddMathPlotDialog::editExistingPlot(MathPlotPtr data)
 {
-    ui->globalVarsTextField->setPlainText(data->getGlobalVars());
-    ui->mathEquation->setPlainText(data->getEquation());
-    setLinkedPlotName(QString::fromStdString(data->getLinkedPlot()));
+    ui->globalVarsTextField->setPlainText(data->globalVars());
+    ui->mathEquation->setPlainText(data->equation());
+    setLinkedPlotName(QString::fromStdString(data->linkedPlotName()));
     ui->pushButtonDone->setText("Update");
-    ui->nameLineEdit->setText(QString::fromStdString(data->getName()));
+    ui->nameLineEdit->setText(QString::fromStdString(data->name()));
     ui->nameLineEdit->setEnabled(false);
 
     _isNewPlot = false;
@@ -118,10 +119,8 @@ void AddMathPlotDialog::editExistingPlot(MathPlotPtr data)
 
 MathPlotPtr AddMathPlotDialog::getMathPlotData() const
 {
-    return _mathPlot;
+    return _plot;
 }
-
-
 
 void AddMathPlotDialog::on_curvesListWidget_doubleClicked(const QModelIndex &index)
 {
@@ -136,58 +135,89 @@ void AddMathPlotDialog::on_curvesListWidget_doubleClicked(const QModelIndex &ind
     }
 }
 
-const std::vector<AddMathPlotDialog::SnippetData> AddMathPlotDialog::getSnippets()
+void AddMathPlotDialog::createSnippets()
 {
-    static bool firstRun = true;
-    static std::vector<SnippetData> snippets;
+    _snipped_examples.clear();
+    _snipped_recent.clear();
 
-    if(firstRun)
+    QFile file("://resources/snippets.xml");
+    if(!file.open(QIODevice::ReadOnly))
     {
-        QFile file("://resources/snippets.xml");
-        if(!file.open(QIODevice::ReadOnly))
-        {
-            QMessageBox::critical(nullptr, "Error", QString("Failed to open snippets.xml file"));
-        }
-        QDomDocument doc;
-        QString parseErrorMsg;
-        int parseErrorLine;
-        if(!doc.setContent(&file, false, &parseErrorMsg, &parseErrorLine))
-        {
-            QMessageBox::critical(nullptr, "Error", QString("Failed to parse snippets.xml, error %1 at line %2").arg(parseErrorMsg).arg(parseErrorLine));
-        }
-        else
-        {
-            QDomElement docElem = doc.documentElement();
-            QDomNode n = docElem.firstChild();
-            while(!n.isNull()) {
-                QDomElement e = n.toElement(); // try to convert the node to an element.
-                if(!e.isNull() && e.tagName() == "snippet") {
-                    SnippetData d;
-                    d.name = e.attribute("name");
-                    d.globalVars = e.firstChildElement("global").text().trimmed();
-                    d.equation = e.firstChildElement("equation").text().trimmed();
-                    snippets.emplace_back(d);
-                }
-                n = n.nextSibling();
+        QMessageBox::critical(nullptr, "Error", QString("Failed to open snippets.xml file"));
+    }
+    QDomDocument doc;
+    QString parseErrorMsg;
+    int parseErrorLine;
+    if(!doc.setContent(&file, false, &parseErrorMsg, &parseErrorLine))
+    {
+        QMessageBox::critical(nullptr, "Error",
+                              QString("Failed to parse snippets.xml, error %1 at line %2").arg(parseErrorMsg).arg(parseErrorLine));
+    }
+    else
+    {
+        QDomElement docElem = doc.documentElement();
+        QDomNode n = docElem.firstChild();
+        while(!n.isNull()) {
+            QDomElement e = n.toElement(); // try to convert the node to an element.
+            if(!e.isNull() && e.tagName() == "snippet") {
+                SnippetData snippet;
+                snippet.name = e.attribute("name");
+                snippet.globalVars = e.firstChildElement("global").text().trimmed();
+                snippet.equation = e.firstChildElement("equation").text().trimmed();
+                _snipped_examples.emplace_back(snippet);
             }
+            n = n.nextSibling();
         }
-        firstRun = false;
     }
 
-    return snippets;
+    std::vector<SnippetData> snippets;
+
+    for( const auto& it: _math_plots)
+    {
+        const auto& math_plot = it.second;
+        SnippetData snippet;
+        snippet.name = QString::fromStdString(math_plot->name());
+        snippet.globalVars = math_plot->globalVars();
+        snippet.equation = math_plot->equation();
+        _snipped_recent.emplace_back(snippet);
+    }
+
+    for(const SnippetData &d : _snipped_examples)
+    {
+        ui->snippetsListWidget->addItem(d.name);
+    }
+
+    for(const SnippetData &d : _snipped_recent )
+    {
+        ui->snippetsListRecent->addItem(d.name);
+    }
 }
+
 
 void AddMathPlotDialog::on_snippetsListWidget_currentRowChanged(int currentRow)
 {
-    SnippetData snippet = getSnippets().at(static_cast<size_t>(currentRow));
-    QString desc = QString("%1\n\nfunction calc(x,y){\n%2\n}").arg(snippet.globalVars).arg(snippet.equation);
+    const SnippetData& snippet = _snipped_examples.at(static_cast<size_t>(currentRow));
+    QString desc = QString("%1\n\nfunction calc(time,value)\n{\n%2\n}").arg(snippet.globalVars).arg(snippet.equation);
     ui->snippetTextEdit->setPlainText(desc);
 }
 
 void AddMathPlotDialog::on_snippetsListWidget_doubleClicked(const QModelIndex &index)
 {
-    SnippetData snippet = getSnippets().at(static_cast<size_t>(index.row()));
+    const SnippetData& snippet = _snipped_examples.at(static_cast<size_t>(index.row()));
     ui->globalVarsTextField->setPlainText(snippet.globalVars);
     ui->mathEquation->setPlainText(snippet.equation);
 }
 
+void AddMathPlotDialog::on_snippetsListRecent_currentRowChanged(int currentRow)
+{
+    const SnippetData& snippet = _snipped_recent.at(static_cast<size_t>(currentRow));
+    QString desc = QString("%1\n\nfunction calc(time,value)\n{\n%2\n}").arg(snippet.globalVars).arg(snippet.equation);
+    ui->snippetTextEdit->setPlainText(desc);
+}
+
+void AddMathPlotDialog::on_snippetsListRecent_doubleClicked(const QModelIndex &index)
+{
+    const SnippetData& snippet = _snipped_recent.at(static_cast<size_t>(index.row()));
+    ui->globalVarsTextField->setPlainText(snippet.globalVars);
+    ui->mathEquation->setPlainText(snippet.equation);
+}
