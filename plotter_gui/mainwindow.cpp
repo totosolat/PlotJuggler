@@ -25,6 +25,7 @@
 #include <QWindow>
 #include <QElapsedTimer>
 #include <QHeaderView>
+#include <QJSEngine>
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
@@ -35,6 +36,7 @@
 #include "selectlistdialog.h"
 #include "aboutdialog.h"
 #include "PlotJuggler/plotdata.h"
+#include "add_math_plot.h"
 
 
 MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *parent) :
@@ -53,7 +55,7 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
 
     _test_option = (commandline_parser.isSet("test"));
 
-    _curvelist_widget = new FilterableListWidget(this);
+    _curvelist_widget = new FilterableListWidget(_mapped_math_plots, this);
     _streamer_signal_mapper = new QSignalMapper(this);
 
     ui->setupUi(this);
@@ -74,17 +76,26 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
     }
 
     connect( _curvelist_widget->getView()->verticalScrollBar(), &QScrollBar::sliderMoved,
-             this, &MainWindow::updateLeftTableValues );
+             this, &MainWindow::onUpdateLeftTableValues );
 
     connect( _curvelist_widget, &FilterableListWidget::hiddenItemsChanged,
-             this, &MainWindow::updateLeftTableValues );
+             this, &MainWindow::onUpdateLeftTableValues );
 
     connect(_curvelist_widget, &FilterableListWidget::deleteCurves,
             this, &MainWindow::deleteDataMultipleCurves );
 
+    connect(_curvelist_widget, &FilterableListWidget::createMathPlot,
+            this, &MainWindow::addMathPlot);
+
+    connect(_curvelist_widget, &FilterableListWidget::editMathPlot,
+            this, &MainWindow::editMathPlot);
+
+    connect(_curvelist_widget, &FilterableListWidget::refreshMathPlot,
+            this, &MainWindow::onRefreshMathPlot);
+
     connect(_curvelist_widget->getView()->verticalScrollBar(),
             &QScrollBar::valueChanged,
-            this, &MainWindow::updateLeftTableValues );
+            this, &MainWindow::onUpdateLeftTableValues );
 
     connect( ui->timeSlider, &RealSlider::realValueChanged,
              this, &MainWindow::onTimeSlider_valueChanged );
@@ -226,7 +237,7 @@ void MainWindow::onRedoInvoked()
 }
 
 
-void MainWindow::updateLeftTableValues()
+void MainWindow::onUpdateLeftTableValues()
 {
     auto table_model = _curvelist_widget->getTable();
     auto table_view  = _curvelist_widget->getView();
@@ -310,7 +321,7 @@ void MainWindow::onTimeSlider_valueChanged(double relative_time)
 void MainWindow::onTrackerTimeUpdated(double absolute_time, bool do_replot)
 {
     updatedDisplayTime();
-    updateLeftTableValues();
+    onUpdateLeftTableValues();
 
     for ( auto& it: _state_publisher)
     {
@@ -865,6 +876,12 @@ void MainWindow::deleteDataMultipleCurves(const std::vector<std::string> &curve_
         emit requestRemoveCurveByName( curve_name );
         _mapped_plot_data.numeric.erase( plot_curve );
 
+        auto math_curve = _mapped_math_plots.find( curve_name );
+        if( math_curve != _mapped_math_plots.end())
+        {
+            _mapped_math_plots.erase( math_curve );
+        }
+
         int row = _curvelist_widget->findRowByName( curve_name );
         if( row != -1 )
         {
@@ -922,6 +939,7 @@ void MainWindow::onDeleteLoadedData()
         } );
         _mapped_plot_data.numeric.clear();
         _mapped_plot_data.user_defined.clear();
+        _mapped_math_plots.clear();
 
         _curvelist_widget->clear();
 
@@ -1965,4 +1983,87 @@ void MainWindow::closeEvent(QCloseEvent *event)
     for(auto& it : _data_loader ) { delete it.second; }
     for(auto& it : _state_publisher ) { delete it.second; }
     for(auto& it : _data_streamer ) { delete it.second; }
+}
+
+void MainWindow::addMathPlot(const std::string& linked_name)
+{
+    addOrEditMathPlot(linked_name, false);
+}
+
+void MainWindow::editMathPlot(const std::string &plot_name)
+{
+    addOrEditMathPlot(plot_name, true);
+}
+
+void MainWindow::onRefreshMathPlot(const std::string &plot_name)
+{
+    try{
+        auto it = _mapped_math_plots.find(plot_name);
+        if(it == _mapped_math_plots.end())
+        {
+            qWarning("failed to find custom equation");
+            return;
+        }
+        MathPlotPtr ce = it->second;
+
+        PlotData &dstPlotData = _mapped_plot_data.numeric.at(plot_name);
+        ce->refresh(_mapped_plot_data);
+        dstPlotData.swapData( ce->plotData() );
+        onUpdateLeftTableValues();
+        updateDataAndReplot();
+    }
+    catch(const std::runtime_error &e)
+    {
+        QMessageBox::critical(this, "error", "Failed to refresh data : " + QString::fromStdString(e.what()));
+    }
+}
+
+void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
+{
+    AddMathPlotDialog dialog(_mapped_plot_data, _mapped_math_plots, this);
+    if(!edit)
+    {
+        // add
+        dialog.setLinkedPlotName(QString::fromStdString(name));
+    }
+    else
+    {
+        auto it = _mapped_math_plots.find(name);
+        if(it == _mapped_math_plots.end())
+        {
+            qWarning("failed to find custom equation");
+            return;
+        }
+        dialog.editExistingPlot(it->second);
+    }
+
+    if(dialog.exec() == QDialog::Accepted)
+    {
+        const QString& qplot_name = dialog.getName();
+        std::string plot_name = qplot_name.toStdString();
+        MathPlotPtr eq = dialog.getMathPlotData();
+
+        if(!edit)
+        {
+            _mapped_plot_data.addNumeric(plot_name);
+        }
+
+        PlotData *dstPlotData = &_mapped_plot_data.numeric.at(plot_name);
+
+        dstPlotData->clear();
+        dstPlotData->swapData( eq->plotData() );
+
+        // keep data for reference
+        _mapped_math_plots[plot_name] = eq;
+        if(!edit)
+        {
+            _curvelist_widget->addItem(qplot_name);
+        }
+        onUpdateLeftTableValues();
+
+        if(edit)
+        {
+            updateDataAndReplot();
+        }
+    }
 }

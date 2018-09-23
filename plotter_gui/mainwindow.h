@@ -19,6 +19,7 @@
 #include "PlotJuggler/dataloader_base.h"
 #include "PlotJuggler/statepublisher_base.h"
 #include "PlotJuggler/datastreamer_base.h"
+#include "math_plot.h"
 
 namespace Ui {
 class MainWindow;
@@ -100,7 +101,7 @@ private slots:
 
     void onTimeSlider_valueChanged(double value);
 
-    void updateLeftTableValues();
+    void onUpdateLeftTableValues();
 
     void deleteDataMultipleCurves(const std::vector<std::string> &curve_names);
 
@@ -117,6 +118,12 @@ private slots:
     void on_pushButtonTimeTracker_pressed();
 
     void on_minimizeView();
+
+    void addMathPlot(const std::string &linked_name);
+
+    void editMathPlot(const std::string &plot_name);
+
+    void onRefreshMathPlot(const std::string &plot_name);
 
     void updateTimeSlider();
 
@@ -148,6 +155,7 @@ private:
     void forEachWidget(std::function<void(PlotWidget*)> op);
 
     PlotDataMapRef  _mapped_plot_data;
+    std::unordered_map<std::string, MathPlotPtr> _mapped_math_plots;
 
     void rearrangeGridLayout();
 
@@ -201,6 +209,8 @@ private:
     void savePluginState(QDomDocument &doc);
 
     std::tuple<double,double,int> calculateVisibleRangeX();
+
+    void addOrEditMathPlot(const std::string &name, bool edit);
     
 protected:
 
