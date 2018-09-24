@@ -10,8 +10,7 @@ MathPlot::MathPlot(const std::string &linkedPlot,
     _linkedPlot(linkedPlot),
     _plotName(plotName),
     _globalVars(globalVars),
-    _calcEquation(equation),
-    _plot_data(plotName)
+    _calcEquation(equation)
 {
 
     QString qLinkedPlot = QString::fromStdString(_linkedPlot);
@@ -50,7 +49,7 @@ MathPlot::MathPlot(const std::string &linkedPlot,
 
 }
 
-void MathPlot::refresh(const PlotDataMapRef &plotData)
+void MathPlot::refresh(PlotDataMapRef &plotData)
 {
     QJSEngine jsEngine;
 
@@ -76,13 +75,21 @@ void MathPlot::refresh(const PlotDataMapRef &plotData)
     {
         throw std::runtime_error("invalid linked data channel");
     }
-    const PlotData *src_data = &src_data_it->second;
+    const PlotData& src_data = src_data_it->second;
 
-    _plot_data.clear();
 
-    for(size_t i=0; i < src_data->size(); ++i)
+    auto dst_data_it = plotData.numeric.find(_plotName);
+    if(dst_data_it == plotData.numeric.end())
     {
-        const PlotData::Point &old_point = src_data->at(i);
+        dst_data_it = plotData.addNumeric(_plotName);
+    }
+    PlotData& dst_data = dst_data_it->second;
+
+    dst_data.clear();
+
+    for(size_t i=0; i < src_data.size(); ++i)
+    {
+        const PlotData::Point &old_point = src_data.at(i);
 
         QJSValue chan_values = jsEngine.newArray(static_cast<quint32>(_used_channels.size()));
         for(int chan_index = 0; chan_index < _used_channels.size(); ++chan_index)
@@ -115,7 +122,7 @@ void MathPlot::refresh(const PlotDataMapRef &plotData)
         }
         new_point.y = jsData.toNumber();
 
-        _plot_data.pushBack(new_point);
+        dst_data.pushBack(new_point);
     }
 }
 
@@ -137,11 +144,6 @@ const QString &MathPlot::globalVars() const
 const QString &MathPlot::equation() const
 {
     return _calcEquation;
-}
-
-PlotData &MathPlot::plotData()
-{
-    return _plot_data;
 }
 
 void MathPlot::addJavascriptDependencies(QJSEngine &engine)
@@ -169,18 +171,28 @@ QDomElement MathPlot::xmlSaveState(QDomDocument &doc) const
     QDomElement snippet = doc.createElement("snippet");
     snippet.setAttribute("name", QString::fromStdString(_plotName) );
 
+    QDomElement linked = doc.createElement("linkedPlot");
+    linked.appendChild( doc.createTextNode( QString::fromStdString(_linkedPlot)) );
+    snippet.appendChild(linked);
+
     QDomElement global = doc.createElement("global");
-    global.setNodeValue( _globalVars );
+    global.appendChild( doc.createTextNode(_globalVars) );
     snippet.appendChild(global);
 
     QDomElement equation = doc.createElement("equation");
-    equation.setNodeValue( _calcEquation );
+    equation.appendChild( doc.createTextNode(_calcEquation) );
     snippet.appendChild(equation);
 
     return snippet;
 }
 
-bool MathPlot::xmlLoadState(QDomElement &plotmatrix_element)
+MathPlotPtr MathPlot::createFromXML(QDomElement &element)
 {
+    auto name   = element.attribute("name").toStdString();
+    auto linkedPlot = element.firstChildElement("linkedPlot").text().trimmed().toStdString();
+    auto globalVars = element.firstChildElement("global").text().trimmed();
+    auto calcEquation = element.firstChildElement("equation").text().trimmed();
 
+    return std::make_shared<MathPlot>(linkedPlot, name, globalVars, calcEquation );
 }
+

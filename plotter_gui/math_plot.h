@@ -20,7 +20,7 @@ public:
              const QString &globalVars,
              const QString &equation);
 
-    void refresh(const PlotDataMapRef &plotData);
+    void refresh(PlotDataMapRef &plotData);
 
     const std::string& name() const;
 
@@ -30,11 +30,9 @@ public:
 
     const QString& equation() const;
 
-    PlotData& plotData();
-
     QDomElement xmlSaveState(QDomDocument &doc) const;
 
-    bool xmlLoadState(QDomElement &plotmatrix_element );
+    static MathPlotPtr createFromXML(QDomElement &element );
 
 private:
     void addJavascriptDependencies(QJSEngine &engine);
@@ -43,7 +41,6 @@ private:
     std::string _plotName;
     QString _globalVars;
     QString _calcEquation;
-    PlotData _plot_data;
     std::vector<std::string> _used_channels;
 };
 

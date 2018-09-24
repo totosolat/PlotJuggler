@@ -9,7 +9,7 @@
 #include "math_plot.h"
 #include "plotwidget.h"
 
-AddMathPlotDialog::AddMathPlotDialog(const PlotDataMapRef &plotMapData,
+AddMathPlotDialog::AddMathPlotDialog(PlotDataMapRef &plotMapData,
                                      const std::unordered_map<std::string, MathPlotPtr> &mapped_math_plots,
                                      QWidget *parent) :
     QDialog(parent),
@@ -27,7 +27,7 @@ AddMathPlotDialog::AddMathPlotDialog(const PlotDataMapRef &plotMapData,
     ui->snippetTextEdit->setFont(fixedFont);
 
     QStringList numericPlotNames;
-    for(const auto &p : plotMapData.numeric)
+    for(const auto &p : _plot_map_data.numeric)
     {
         QString name = QString::fromStdString(p.first);
         numericPlotNames.push_back(name);
@@ -64,19 +64,16 @@ void AddMathPlotDialog::accept()
                 throw std::runtime_error("plot name already exists");
             }
         }
-        MathPlotPtr mathPlot = std::make_shared<MathPlot>(getLinkedData().toStdString(),
-                                                          plotName,
-                                                          getGlobalVars(),
-                                                          getEquation());
-        mathPlot->refresh(_plot_map_data);
-
-        _plot = mathPlot;
+        _plot = std::make_shared<MathPlot>(getLinkedData().toStdString(),
+                                           plotName,
+                                           getGlobalVars(),
+                                           getEquation());
         QDialog::accept();
     }
     catch (const std::runtime_error &e) {
         _plot.reset();
-
-        QMessageBox::critical(this, "Error", "Failed to create math plot : " + QString::fromStdString(e.what()));
+        QMessageBox::critical(this, "Error", "Failed to create math plot : "
+                              + QString::fromStdString(e.what()));
     }
 }
 
@@ -100,10 +97,6 @@ QString AddMathPlotDialog::getName() const
     return ui->nameLineEdit->text();
 }
 
-const PlotData& AddMathPlotDialog::getPlotData() const
-{
-    return _plot->plotData();
-}
 
 void AddMathPlotDialog::editExistingPlot(MathPlotPtr data)
 {

@@ -22,7 +22,7 @@ class AddMathPlotDialog : public QDialog
     };
 
 public:
-    explicit AddMathPlotDialog(const PlotDataMapRef &plotMapData,
+    explicit AddMathPlotDialog(PlotDataMapRef &plotMapData,
                                const std::unordered_map<std::string, MathPlotPtr>& _mapped_math_plots,
                                QWidget *parent);
     virtual ~AddMathPlotDialog() override;
@@ -54,7 +54,7 @@ private:
     void createSnippets();
 
 
-    const PlotDataMapRef &_plot_map_data;
+    PlotDataMapRef &_plot_map_data;
     const std::unordered_map<std::string, MathPlotPtr> &_math_plots;
     Ui::AddMathPlotDialog *ui;
 

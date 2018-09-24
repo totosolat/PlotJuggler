@@ -423,13 +423,6 @@ border: 1px solid rgb(150, 150, 150);</string>
           </widget>
          </item>
          <item>
-          <widget class="QCheckBox" name="checkBoxKeepRefreshing">
-           <property name="text">
-            <string>Keep refreshing</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>

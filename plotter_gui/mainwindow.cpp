@@ -777,6 +777,19 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
         }
     }
 
+    auto custom_equations = root.firstChildElement( "customMathEquations" );
+
+    for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
+         custom_eq.isNull() == false;
+         custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+    {
+        MathPlotPtr new_math_plot = MathPlot::createFromXML(custom_eq);
+        const auto& name = new_math_plot->name();
+        _mapped_math_plots[name] = new_math_plot;
+        new_math_plot->refresh( _mapped_plot_data );
+        _curvelist_widget->addItem( QString::fromStdString( name ) );
+    }
+
     //-----------------------------------------------------
     checkAllCurvesFromLayout(root);
     //-----------------------------------------------------
@@ -795,6 +808,7 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
         bool remove_offset = (relative_time.attribute("enabled") == QString("1"));
         ui->pushButtonRemoveTimeOffset->setChecked(remove_offset);
     }
+
     return true;
 }
 
@@ -833,12 +847,19 @@ void MainWindow::onActionSaveLayout()
         }
     }
     //------------------------------------
+    QDomElement math_elements =  doc.createElement( "customMathEquations" );
+
+    for(const auto& it: _mapped_math_plots)
+    {
+      const auto& math_plot = it.second;
+      math_elements.appendChild( math_plot->xmlSaveState(doc) );
+    }
+    root.appendChild( math_elements );
 
     QSettings settings;
 
     QString directory_path  = settings.value("MainWindow.lastLayoutDirectory",
                                              QDir::currentPath() ).toString();
-
     QFileDialog saveDialog;
     saveDialog.setAcceptMode(QFileDialog::AcceptSave);
     saveDialog.setDefaultSuffix("xml");
@@ -2006,9 +2027,8 @@ void MainWindow::onRefreshMathPlot(const std::string &plot_name)
         }
         MathPlotPtr ce = it->second;
 
-        PlotData &dstPlotData = _mapped_plot_data.numeric.at(plot_name);
         ce->refresh(_mapped_plot_data);
-        dstPlotData.swapData( ce->plotData() );
+
         onUpdateLeftTableValues();
         updateDataAndReplot();
     }
@@ -2043,18 +2063,11 @@ void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
         std::string plot_name = qplot_name.toStdString();
         MathPlotPtr eq = dialog.getMathPlotData();
 
-        if(!edit)
-        {
-            _mapped_plot_data.addNumeric(plot_name);
-        }
-
-        PlotData *dstPlotData = &_mapped_plot_data.numeric.at(plot_name);
-
-        dstPlotData->clear();
-        dstPlotData->swapData( eq->plotData() );
+        eq->refresh(_mapped_plot_data);
 
         // keep data for reference
         _mapped_math_plots[plot_name] = eq;
+
         if(!edit)
         {
             _curvelist_widget->addItem(qplot_name);
