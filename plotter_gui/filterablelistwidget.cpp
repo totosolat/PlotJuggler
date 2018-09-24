@@ -281,11 +281,15 @@ std::vector<std::string> FilterableListWidget::getNonHiddenSelectedRows()
     return non_hidden_list;
 }
 
-QTableView *FilterableListWidget::getView() const
+QTableView *FilterableListWidget::getTableView() const
 {
     return ui->tableView;
 }
 
+QTableView *FilterableListWidget::getCustomView() const
+{
+    return ui->tableViewCustom;
+}
 
 void FilterableListWidget::on_radioContains_toggled(bool checked)
 {
@@ -461,5 +465,6 @@ void FilterableListWidget::on_buttonRefreshAll_pressed()
     {
         emit refreshMathPlot( mp.first );
     }
-
 }
+
+

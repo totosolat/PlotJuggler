@@ -155,6 +155,7 @@ private:
     void forEachWidget(std::function<void(PlotWidget*)> op);
 
     PlotDataMapRef  _mapped_plot_data;
+
     std::unordered_map<std::string, MathPlotPtr> _mapped_math_plots;
 
     void rearrangeGridLayout();

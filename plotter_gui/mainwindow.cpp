@@ -75,9 +75,6 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
         }
     }
 
-    connect( _curvelist_widget->getView()->verticalScrollBar(), &QScrollBar::sliderMoved,
-             this, &MainWindow::onUpdateLeftTableValues );
-
     connect( _curvelist_widget, &FilterableListWidget::hiddenItemsChanged,
              this, &MainWindow::onUpdateLeftTableValues );
 
@@ -93,8 +90,7 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
     connect(_curvelist_widget, &FilterableListWidget::refreshMathPlot,
             this, &MainWindow::onRefreshMathPlot);
 
-    connect(_curvelist_widget->getView()->verticalScrollBar(),
-            &QScrollBar::valueChanged,
+    connect(_curvelist_widget->getTableView()->verticalScrollBar(), &QScrollBar::valueChanged,
             this, &MainWindow::onUpdateLeftTableValues );
 
     connect( ui->timeSlider, &RealSlider::realValueChanged,
@@ -239,64 +235,66 @@ void MainWindow::onRedoInvoked()
 
 void MainWindow::onUpdateLeftTableValues()
 {
-    auto table_model = _curvelist_widget->getTable();
-    auto table_view  = _curvelist_widget->getView();
+    auto table_model = _curvelist_widget->getTableModel();
 
-    if( _curvelist_widget->is2ndColumnHidden() == false)
+    for(auto table_view: { _curvelist_widget->getTableView(), _curvelist_widget->getCustomView() } )
     {
-        table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-        table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-
-        const int vertical_height = table_view->visibleRegion().boundingRect().height();
-
-        for (int row = 0; row < _curvelist_widget->rowCount(); row++)
+        if( _curvelist_widget->is2ndColumnHidden() == false)
         {
-            int vertical_pos = table_view->rowViewportPosition(row);
-            if( vertical_pos < 0 || table_view->isRowHidden(row) ){ continue; }
-            if( vertical_pos > vertical_height){ break; }
+            table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+            table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
 
-            const std::string& name = table_model->item(row,0)->text().toStdString();
-            auto it = _mapped_plot_data.numeric.find(name);
-            if( it !=  _mapped_plot_data.numeric.end())
+            const int vertical_height = table_view->visibleRegion().boundingRect().height();
+
+            for (int row = 0; row < _curvelist_widget->rowCount(); row++)
             {
-                auto& data = it->second;
+                int vertical_pos = table_view->rowViewportPosition(row);
+                if( vertical_pos < 0 || table_view->isRowHidden(row) ){ continue; }
+                if( vertical_pos > vertical_height){ break; }
 
-                double num = 0.0;
-                bool valid = false;
+                const std::string& name = table_model->item(row,0)->text().toStdString();
+                auto it = _mapped_plot_data.numeric.find(name);
+                if( it !=  _mapped_plot_data.numeric.end())
+                {
+                    auto& data = it->second;
 
-                if( _tracker_time < std::numeric_limits<double>::max())
-                {
-                    auto value = data.getYfromX( _tracker_time );
-                    if(value){
-                        valid = true;
-                        num = value.value();
-                    }
-                }
-                else{
-                    if( data.size() > 0) {
-                        valid = true;
-                        num = data.back().y;
-                    }
-                }
-                if( valid)
-                {
-                    QString num_text = QString::number( num, 'f', 3);
-                    if(num_text.contains('.'))
+                    double num = 0.0;
+                    bool valid = false;
+
+                    if( _tracker_time < std::numeric_limits<double>::max())
                     {
-                        int idx = num_text.length() -1;
-                        while( num_text[idx] == '0' )
-                        {
-                            num_text[idx] = ' ';
-                            idx--;
+                        auto value = data.getYfromX( _tracker_time );
+                        if(value){
+                            valid = true;
+                            num = value.value();
                         }
-                        if(  num_text[idx] == '.') num_text[idx] = ' ';
                     }
-                    table_model->item(row,1)->setText(num_text + ' ');
+                    else{
+                        if( data.size() > 0) {
+                            valid = true;
+                            num = data.back().y;
+                        }
+                    }
+                    if( valid)
+                    {
+                        QString num_text = QString::number( num, 'f', 3);
+                        if(num_text.contains('.'))
+                        {
+                            int idx = num_text.length() -1;
+                            while( num_text[idx] == '0' )
+                            {
+                                num_text[idx] = ' ';
+                                idx--;
+                            }
+                            if(  num_text[idx] == '.') num_text[idx] = ' ';
+                        }
+                        table_model->item(row,1)->setText(num_text + ' ');
+                    }
                 }
             }
+            table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+            table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
         }
-        table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-        table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     }
 }
 
@@ -779,15 +777,23 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
 
     auto custom_equations = root.firstChildElement( "customMathEquations" );
 
-    for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
-         custom_eq.isNull() == false;
-         custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+    try{
+        for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
+             custom_eq.isNull() == false;
+             custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+        {
+            MathPlotPtr new_math_plot = MathPlot::createFromXML(custom_eq);
+            const auto& name = new_math_plot->name();
+            _mapped_math_plots[name] = new_math_plot;
+            new_math_plot->refresh( _mapped_plot_data );
+            _curvelist_widget->addItem( QString::fromStdString( name ) );
+        }
+    }
+    catch( std::runtime_error& err)
     {
-        MathPlotPtr new_math_plot = MathPlot::createFromXML(custom_eq);
-        const auto& name = new_math_plot->name();
-        _mapped_math_plots[name] = new_math_plot;
-        new_math_plot->refresh( _mapped_plot_data );
-        _curvelist_widget->addItem( QString::fromStdString( name ) );
+        QMessageBox::warning(this, tr("Exception"),
+                             tr("Failed to refresh a customMathEquation \n\n %1\n")
+                             .arg(err.what()) );
     }
 
     //-----------------------------------------------------

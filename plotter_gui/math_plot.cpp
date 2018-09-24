@@ -70,22 +70,23 @@ void MathPlot::refresh(PlotDataMapRef &plotData)
         throw std::runtime_error("JS Engine : " + calcFct.toString().toStdString());
     }
 
-    auto src_data_it = plotData.numeric.find(_linkedPlot);
-    if(src_data_it == plotData.numeric.end())
-    {
-        throw std::runtime_error("invalid linked data channel");
-    }
-    const PlotData& src_data = src_data_it->second;
-
-
     auto dst_data_it = plotData.numeric.find(_plotName);
     if(dst_data_it == plotData.numeric.end())
     {
         dst_data_it = plotData.addNumeric(_plotName);
     }
     PlotData& dst_data = dst_data_it->second;
-
+    // clean up
     dst_data.clear();
+
+    auto src_data_it = plotData.numeric.find(_linkedPlot);
+    if(src_data_it == plotData.numeric.end())
+    {
+        // failed! keep it empty
+        return;
+    }
+    const PlotData& src_data = src_data_it->second;
+
 
     for(size_t i=0; i < src_data.size(); ++i)
     {
@@ -163,8 +164,6 @@ void MathPlot::addJavascriptDependencies(QJSEngine &engine)
         }
     }
 }
-
-
 
 QDomElement MathPlot::xmlSaveState(QDomDocument &doc) const
 {

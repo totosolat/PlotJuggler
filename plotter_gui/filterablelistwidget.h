@@ -42,16 +42,18 @@ public:
 
     void updateFilter();
 
-    QStandardItemModel *getTable() const
+    QStandardItemModel *getTableModel() const
     {
         return _model;
     }
 
-    QTableView* getView() const;
+    QTableView* getTableView() const;
+
+    QTableView* getCustomView() const;
 
     bool is2ndColumnHidden() const
     {
-        return getView()->isColumnHidden(1);
+        return getTableView()->isColumnHidden(1);
     }
 
     virtual void keyPressEvent(QKeyEvent * event) override;
