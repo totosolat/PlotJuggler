@@ -36,7 +36,7 @@
 #include "selectlistdialog.h"
 #include "aboutdialog.h"
 #include "PlotJuggler/plotdata.h"
-#include "add_math_plot.h"
+#include "add_custom_plot.h"
 
 
 MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *parent) :
@@ -55,7 +55,7 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
 
     _test_option = (commandline_parser.isSet("test"));
 
-    _curvelist_widget = new FilterableListWidget(_mapped_math_plots, this);
+    _curvelist_widget = new FilterableListWidget(_custom_plots, this);
     _streamer_signal_mapper = new QSignalMapper(this);
 
     ui->setupUi(this);
@@ -782,10 +782,10 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
              custom_eq.isNull() == false;
              custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
         {
-            MathPlotPtr new_math_plot = MathPlot::createFromXML(custom_eq);
-            const auto& name = new_math_plot->name();
-            _mapped_math_plots[name] = new_math_plot;
-            new_math_plot->refresh( _mapped_plot_data );
+            CustomPlotPtr new_custom_plot = CustomPlot::createFromXML(custom_eq);
+            const auto& name = new_custom_plot->name();
+            _custom_plots[name] = new_custom_plot;
+            new_custom_plot->calculate( _mapped_plot_data );
             _curvelist_widget->addItem( QString::fromStdString( name ) );
         }
     }
@@ -855,10 +855,10 @@ void MainWindow::onActionSaveLayout()
     //------------------------------------
     QDomElement math_elements =  doc.createElement( "customMathEquations" );
 
-    for(const auto& it: _mapped_math_plots)
+    for(const auto& it: _custom_plots)
     {
-      const auto& math_plot = it.second;
-      math_elements.appendChild( math_plot->xmlSaveState(doc) );
+      const auto& custom_plot = it.second;
+      math_elements.appendChild( custom_plot->xmlSaveState(doc) );
     }
     root.appendChild( math_elements );
 
@@ -903,10 +903,10 @@ void MainWindow::deleteDataMultipleCurves(const std::vector<std::string> &curve_
         emit requestRemoveCurveByName( curve_name );
         _mapped_plot_data.numeric.erase( plot_curve );
 
-        auto math_curve = _mapped_math_plots.find( curve_name );
-        if( math_curve != _mapped_math_plots.end())
+        auto math_curve = _custom_plots.find( curve_name );
+        if( math_curve != _custom_plots.end())
         {
-            _mapped_math_plots.erase( math_curve );
+            _custom_plots.erase( math_curve );
         }
 
         int row = _curvelist_widget->findRowByName( curve_name );
@@ -966,7 +966,7 @@ void MainWindow::onDeleteLoadedData()
         } );
         _mapped_plot_data.numeric.clear();
         _mapped_plot_data.user_defined.clear();
-        _mapped_math_plots.clear();
+        _custom_plots.clear();
 
         _curvelist_widget->clear();
 
@@ -2025,15 +2025,15 @@ void MainWindow::editMathPlot(const std::string &plot_name)
 void MainWindow::onRefreshMathPlot(const std::string &plot_name)
 {
     try{
-        auto it = _mapped_math_plots.find(plot_name);
-        if(it == _mapped_math_plots.end())
+        auto it = _custom_plots.find(plot_name);
+        if(it == _custom_plots.end())
         {
             qWarning("failed to find custom equation");
             return;
         }
-        MathPlotPtr ce = it->second;
+        CustomPlotPtr ce = it->second;
 
-        ce->refresh(_mapped_plot_data);
+        ce->calculate(_mapped_plot_data);
 
         onUpdateLeftTableValues();
         updateDataAndReplot();
@@ -2046,7 +2046,7 @@ void MainWindow::onRefreshMathPlot(const std::string &plot_name)
 
 void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
 {
-    AddMathPlotDialog dialog(_mapped_plot_data, _mapped_math_plots, this);
+    AddCustomPlotDialog dialog(_mapped_plot_data, _custom_plots, this);
     if(!edit)
     {
         // add
@@ -2054,8 +2054,8 @@ void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
     }
     else
     {
-        auto it = _mapped_math_plots.find(name);
-        if(it == _mapped_math_plots.end())
+        auto it = _custom_plots.find(name);
+        if(it == _custom_plots.end())
         {
             qWarning("failed to find custom equation");
             return;
@@ -2067,12 +2067,12 @@ void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
     {
         const QString& qplot_name = dialog.getName();
         std::string plot_name = qplot_name.toStdString();
-        MathPlotPtr eq = dialog.getMathPlotData();
+        CustomPlotPtr eq = dialog.getCustomPlotData();
 
-        eq->refresh(_mapped_plot_data);
+        eq->calculate(_mapped_plot_data);
 
         // keep data for reference
-        _mapped_math_plots[plot_name] = eq;
+        _custom_plots[plot_name] = eq;
 
         if(!edit)
         {

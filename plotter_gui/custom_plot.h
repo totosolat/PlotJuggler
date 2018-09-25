@@ -6,21 +6,21 @@
 #include <QString>
 #include <QDomDocument>
 #include <QJSEngine>
-#include <include/PlotJuggler/plotdata.h>
+#include "PlotJuggler/plotdata.h"
 
-class MathPlot;
+class CustomPlot;
 class QJSEngine;
-typedef std::shared_ptr<MathPlot> MathPlotPtr;
+typedef std::shared_ptr<CustomPlot> CustomPlotPtr;
 
-class MathPlot
+class CustomPlot
 {
 public:
-    MathPlot(const std::string &linkedPlot,
+    CustomPlot(const std::string &linkedPlot,
              const std::string &plotName,
              const QString &globalVars,
-             const QString &equation);
+             const QString &function);
 
-    void refresh(PlotDataMapRef &plotData);
+    void calculate(PlotDataMapRef &plotData);
 
     const std::string& name() const;
 
@@ -28,19 +28,19 @@ public:
 
     const QString& globalVars() const;
 
-    const QString& equation() const;
+    const QString& function() const;
 
     QDomElement xmlSaveState(QDomDocument &doc) const;
 
-    static MathPlotPtr createFromXML(QDomElement &element );
+    static CustomPlotPtr createFromXML(QDomElement &element );
 
 private:
     void addJavascriptDependencies(QJSEngine &engine);
 
-    std::string _linkedPlot;
-    std::string _plotName;
-    QString _globalVars;
-    QString _calcEquation;
+    std::string _linked_plot_name;
+    std::string _plot_name;
+    QString _global_vars;
+    QString _function;
     std::vector<std::string> _used_channels;
 };
 

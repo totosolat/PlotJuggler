@@ -1,17 +1,17 @@
-#ifndef AddMathPlotDialog_H
-#define AddMathPlotDialog_H
+#ifndef AddCustomPlotDialog_H
+#define AddCustomPlotDialog_H
 
 #include <QDialog>
 #include <QListWidgetItem>
 #include <qwt_plot_curve.h>
 #include "PlotJuggler/plotdata.h"
-#include "math_plot.h"
+#include "custom_plot.h"
 
 namespace Ui {
-class AddMathPlotDialog;
+class AddCustomPlotDialog;
 }
 
-class AddMathPlotDialog : public QDialog
+class AddCustomPlotDialog : public QDialog
 {
     Q_OBJECT
 
@@ -22,10 +22,10 @@ class AddMathPlotDialog : public QDialog
     };
 
 public:
-    explicit AddMathPlotDialog(PlotDataMapRef &plotMapData,
-                               const std::unordered_map<std::string, MathPlotPtr>& _mapped_math_plots,
+    explicit AddCustomPlotDialog(PlotDataMapRef &plotMapData,
+                               const std::unordered_map<std::string, CustomPlotPtr>& mapped_custom_plots,
                                QWidget *parent);
-    virtual ~AddMathPlotDialog() override;
+    virtual ~AddCustomPlotDialog() override;
 
     void setLinkedPlotName(const QString &linkedPlotName);
     virtual void accept() override;
@@ -35,8 +35,8 @@ public:
     QString getEquation() const;
     QString getName() const;
     const PlotData& getPlotData() const;
-    void editExistingPlot(MathPlotPtr data);
-    MathPlotPtr getMathPlotData() const;
+    void editExistingPlot(CustomPlotPtr data);
+    CustomPlotPtr getCustomPlotData() const;
 
 private slots:
 
@@ -55,14 +55,14 @@ private:
 
 
     PlotDataMapRef &_plot_map_data;
-    const std::unordered_map<std::string, MathPlotPtr> &_math_plots;
-    Ui::AddMathPlotDialog *ui;
+    const std::unordered_map<std::string, CustomPlotPtr> &_custom_plots;
+    Ui::AddCustomPlotDialog *ui;
 
-    MathPlotPtr _plot;
-    bool _isNewPlot = true;
+    CustomPlotPtr _plot;
+    bool _is_new;
 
     std::vector<SnippetData> _snipped_examples;
     std::vector<SnippetData> _snipped_recent;
 };
 
-#endif // AddMathPlotDialog_H
+#endif // AddCustomPlotDialog_H

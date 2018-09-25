@@ -1,21 +1,21 @@
-#include "math_plot.h"
+#include "custom_plot.h"
 
 #include <QFile>
 #include <QMessageBox>
 
-MathPlot::MathPlot(const std::string &linkedPlot,
+CustomPlot::CustomPlot(const std::string &linkedPlot,
                    const std::string &plotName,
                    const QString &globalVars,
                    const QString &equation):
-    _linkedPlot(linkedPlot),
-    _plotName(plotName),
-    _globalVars(globalVars),
-    _calcEquation(equation)
+    _linked_plot_name(linkedPlot),
+    _plot_name(plotName),
+    _global_vars(globalVars),
+    _function(equation)
 {
 
-    QString qLinkedPlot = QString::fromStdString(_linkedPlot);
+    QString qLinkedPlot = QString::fromStdString(_linked_plot_name);
 
-    QString replaced_equation = _calcEquation;
+    QString replaced_equation = _function;
     while(true)
     {
         int pos1=replaced_equation.indexOf("$$");
@@ -43,24 +43,24 @@ MathPlot::MathPlot(const std::string &linkedPlot,
             _used_channels.push_back(channel_name.toStdString());
         }
     }
-    _calcEquation = replaced_equation;
+    _function = replaced_equation;
 
     //qDebug() << "final equation string : " << replaced_equation;
 
 }
 
-void MathPlot::refresh(PlotDataMapRef &plotData)
+void CustomPlot::calculate(PlotDataMapRef &plotData)
 {
     QJSEngine jsEngine;
 
     addJavascriptDependencies(jsEngine);
 
-    QJSValue globalVarResult = jsEngine.evaluate(_globalVars);
+    QJSValue globalVarResult = jsEngine.evaluate(_global_vars);
     if(globalVarResult.isError())
     {
         throw std::runtime_error("JS Engine : " + globalVarResult.toString().toStdString());
     }
-    QString calcMethodStr = QString("function calc(time, value, CHANNEL_VALUES){with (Math){\n%1\n}}").arg(_calcEquation);
+    QString calcMethodStr = QString("function calc(time, value, CHANNEL_VALUES){with (Math){\n%1\n}}").arg(_function);
     jsEngine.evaluate(calcMethodStr);
 
     QJSValue calcFct = jsEngine.evaluate("calc");
@@ -70,16 +70,16 @@ void MathPlot::refresh(PlotDataMapRef &plotData)
         throw std::runtime_error("JS Engine : " + calcFct.toString().toStdString());
     }
 
-    auto dst_data_it = plotData.numeric.find(_plotName);
+    auto dst_data_it = plotData.numeric.find(_plot_name);
     if(dst_data_it == plotData.numeric.end())
     {
-        dst_data_it = plotData.addNumeric(_plotName);
+        dst_data_it = plotData.addNumeric(_plot_name);
     }
     PlotData& dst_data = dst_data_it->second;
     // clean up
     dst_data.clear();
 
-    auto src_data_it = plotData.numeric.find(_linkedPlot);
+    auto src_data_it = plotData.numeric.find(_linked_plot_name);
     if(src_data_it == plotData.numeric.end())
     {
         // failed! keep it empty
@@ -127,27 +127,27 @@ void MathPlot::refresh(PlotDataMapRef &plotData)
     }
 }
 
-const std::string &MathPlot::name() const
+const std::string &CustomPlot::name() const
 {
-    return _plotName;
+    return _plot_name;
 }
 
-const std::string &MathPlot::linkedPlotName() const
+const std::string &CustomPlot::linkedPlotName() const
 {
-    return _linkedPlot;
+    return _linked_plot_name;
 }
 
-const QString &MathPlot::globalVars() const
+const QString &CustomPlot::globalVars() const
 {
-    return _globalVars;
+    return _global_vars;
 }
 
-const QString &MathPlot::equation() const
+const QString &CustomPlot::function() const
 {
-    return _calcEquation;
+    return _function;
 }
 
-void MathPlot::addJavascriptDependencies(QJSEngine &engine)
+void CustomPlot::addJavascriptDependencies(QJSEngine &engine)
 {
     static QStringList files{":/js/resources/common.js", ":/js/resources/geographiclib.min.js" };
     for(QString fileName : files)
@@ -165,33 +165,33 @@ void MathPlot::addJavascriptDependencies(QJSEngine &engine)
     }
 }
 
-QDomElement MathPlot::xmlSaveState(QDomDocument &doc) const
+QDomElement CustomPlot::xmlSaveState(QDomDocument &doc) const
 {
     QDomElement snippet = doc.createElement("snippet");
-    snippet.setAttribute("name", QString::fromStdString(_plotName) );
+    snippet.setAttribute("name", QString::fromStdString(_plot_name) );
 
     QDomElement linked = doc.createElement("linkedPlot");
-    linked.appendChild( doc.createTextNode( QString::fromStdString(_linkedPlot)) );
+    linked.appendChild( doc.createTextNode( QString::fromStdString(_linked_plot_name)) );
     snippet.appendChild(linked);
 
     QDomElement global = doc.createElement("global");
-    global.appendChild( doc.createTextNode(_globalVars) );
+    global.appendChild( doc.createTextNode(_global_vars) );
     snippet.appendChild(global);
 
     QDomElement equation = doc.createElement("equation");
-    equation.appendChild( doc.createTextNode(_calcEquation) );
+    equation.appendChild( doc.createTextNode(_function) );
     snippet.appendChild(equation);
 
     return snippet;
 }
 
-MathPlotPtr MathPlot::createFromXML(QDomElement &element)
+CustomPlotPtr CustomPlot::createFromXML(QDomElement &element)
 {
     auto name   = element.attribute("name").toStdString();
     auto linkedPlot = element.firstChildElement("linkedPlot").text().trimmed().toStdString();
     auto globalVars = element.firstChildElement("global").text().trimmed();
     auto calcEquation = element.firstChildElement("equation").text().trimmed();
 
-    return std::make_shared<MathPlot>(linkedPlot, name, globalVars, calcEquation );
+    return std::make_shared<CustomPlot>(linkedPlot, name, globalVars, calcEquation );
 }
 

@@ -34,7 +34,7 @@ private:
 
 //-------------------------------------------------
 
-FilterableListWidget::FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr> &mapped_math_plots,
+FilterableListWidget::FilterableListWidget(const std::unordered_map<std::string, CustomPlotPtr> &mapped_math_plots,
                                            QWidget *parent) :
     QWidget(parent),
     ui(new Ui::FilterableListWidget),

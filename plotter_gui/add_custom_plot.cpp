@@ -1,21 +1,22 @@
-#include "add_math_plot.h"
-#include "ui_add_math_plot.h"
+#include "add_custom_plot.h"
+#include "ui_add_custom_plot.h"
 #include <QDebug>
 #include <QMessageBox>
 #include <QFont>
 #include <QDomDocument>
 #include <QDomElement>
+#include <QFontDatabase>
 #include <QFile>
-#include "math_plot.h"
+#include "custom_plot.h"
 #include "plotwidget.h"
 
-AddMathPlotDialog::AddMathPlotDialog(PlotDataMapRef &plotMapData,
-                                     const std::unordered_map<std::string, MathPlotPtr> &mapped_math_plots,
+AddCustomPlotDialog::AddCustomPlotDialog(PlotDataMapRef &plotMapData,
+                                     const std::unordered_map<std::string, CustomPlotPtr> &mapped_custom_plots,
                                      QWidget *parent) :
     QDialog(parent),
     _plot_map_data(plotMapData),
-    _math_plots(mapped_math_plots),
-    ui(new Ui::AddMathPlotDialog)
+    _custom_plots(mapped_custom_plots),
+    ui(new Ui::AddCustomPlotDialog)
 {
     ui->setupUi(this);
 
@@ -42,21 +43,21 @@ AddMathPlotDialog::AddMathPlotDialog(PlotDataMapRef &plotMapData,
     createSnippets();
 }
 
-AddMathPlotDialog::~AddMathPlotDialog()
+AddCustomPlotDialog::~AddCustomPlotDialog()
 {
     delete ui;
 }
 
-void AddMathPlotDialog::setLinkedPlotName(const QString &linkedPlotName)
+void AddCustomPlotDialog::setLinkedPlotName(const QString &linkedPlotName)
 {
     ui->linkedChannelCombobox->setCurrentText(linkedPlotName);
 }
 
-void AddMathPlotDialog::accept()
+void AddCustomPlotDialog::accept()
 {
     try {
         std::string plotName = getName().toStdString();
-        if(_isNewPlot)
+        if(_is_new)
         {
             // check if name is unique
             if(_plot_map_data.numeric.count(plotName) != 0)
@@ -64,7 +65,7 @@ void AddMathPlotDialog::accept()
                 throw std::runtime_error("plot name already exists");
             }
         }
-        _plot = std::make_shared<MathPlot>(getLinkedData().toStdString(),
+        _plot = std::make_shared<CustomPlot>(getLinkedData().toStdString(),
                                            plotName,
                                            getGlobalVars(),
                                            getEquation());
@@ -77,45 +78,45 @@ void AddMathPlotDialog::accept()
     }
 }
 
-QString AddMathPlotDialog::getLinkedData() const
+QString AddCustomPlotDialog::getLinkedData() const
 {
     return ui->linkedChannelCombobox->currentText();
 }
 
-QString AddMathPlotDialog::getGlobalVars() const
+QString AddCustomPlotDialog::getGlobalVars() const
 {
     return ui->globalVarsTextField->toPlainText();
 }
 
-QString AddMathPlotDialog::getEquation() const
+QString AddCustomPlotDialog::getEquation() const
 {
     return ui->mathEquation->toPlainText();
 }
 
-QString AddMathPlotDialog::getName() const
+QString AddCustomPlotDialog::getName() const
 {
     return ui->nameLineEdit->text();
 }
 
 
-void AddMathPlotDialog::editExistingPlot(MathPlotPtr data)
+void AddCustomPlotDialog::editExistingPlot(CustomPlotPtr data)
 {
     ui->globalVarsTextField->setPlainText(data->globalVars());
-    ui->mathEquation->setPlainText(data->equation());
+    ui->mathEquation->setPlainText(data->function());
     setLinkedPlotName(QString::fromStdString(data->linkedPlotName()));
     ui->pushButtonDone->setText("Update");
     ui->nameLineEdit->setText(QString::fromStdString(data->name()));
     ui->nameLineEdit->setEnabled(false);
 
-    _isNewPlot = false;
+    _is_new = false;
 }
 
-MathPlotPtr AddMathPlotDialog::getMathPlotData() const
+CustomPlotPtr AddCustomPlotDialog::getCustomPlotData() const
 {
     return _plot;
 }
 
-void AddMathPlotDialog::on_curvesListWidget_doubleClicked(const QModelIndex &index)
+void AddCustomPlotDialog::on_curvesListWidget_doubleClicked(const QModelIndex &index)
 {
     QString appendString = QString("$$%1$$").arg(ui->curvesListWidget->item(index.row())->text());
     if(ui->globalVarsTextField->hasFocus())
@@ -128,7 +129,7 @@ void AddMathPlotDialog::on_curvesListWidget_doubleClicked(const QModelIndex &ind
     }
 }
 
-void AddMathPlotDialog::createSnippets()
+void AddCustomPlotDialog::createSnippets()
 {
     _snipped_examples.clear();
     _snipped_recent.clear();
@@ -165,13 +166,13 @@ void AddMathPlotDialog::createSnippets()
 
     std::vector<SnippetData> snippets;
 
-    for( const auto& it: _math_plots)
+    for( const auto& it: _custom_plots)
     {
         const auto& math_plot = it.second;
         SnippetData snippet;
         snippet.name = QString::fromStdString(math_plot->name());
         snippet.globalVars = math_plot->globalVars();
-        snippet.equation = math_plot->equation();
+        snippet.equation = math_plot->function();
         _snipped_recent.emplace_back(snippet);
     }
 
@@ -187,28 +188,28 @@ void AddMathPlotDialog::createSnippets()
 }
 
 
-void AddMathPlotDialog::on_snippetsListWidget_currentRowChanged(int currentRow)
+void AddCustomPlotDialog::on_snippetsListWidget_currentRowChanged(int currentRow)
 {
     const SnippetData& snippet = _snipped_examples.at(static_cast<size_t>(currentRow));
     QString desc = QString("%1\n\nfunction calc(time,value)\n{\n%2\n}").arg(snippet.globalVars).arg(snippet.equation);
     ui->snippetTextEdit->setPlainText(desc);
 }
 
-void AddMathPlotDialog::on_snippetsListWidget_doubleClicked(const QModelIndex &index)
+void AddCustomPlotDialog::on_snippetsListWidget_doubleClicked(const QModelIndex &index)
 {
     const SnippetData& snippet = _snipped_examples.at(static_cast<size_t>(index.row()));
     ui->globalVarsTextField->setPlainText(snippet.globalVars);
     ui->mathEquation->setPlainText(snippet.equation);
 }
 
-void AddMathPlotDialog::on_snippetsListRecent_currentRowChanged(int currentRow)
+void AddCustomPlotDialog::on_snippetsListRecent_currentRowChanged(int currentRow)
 {
     const SnippetData& snippet = _snipped_recent.at(static_cast<size_t>(currentRow));
     QString desc = QString("%1\n\nfunction calc(time,value)\n{\n%2\n}").arg(snippet.globalVars).arg(snippet.equation);
     ui->snippetTextEdit->setPlainText(desc);
 }
 
-void AddMathPlotDialog::on_snippetsListRecent_doubleClicked(const QModelIndex &index)
+void AddCustomPlotDialog::on_snippetsListRecent_doubleClicked(const QModelIndex &index)
 {
     const SnippetData& snippet = _snipped_recent.at(static_cast<size_t>(index.row()));
     ui->globalVarsTextField->setPlainText(snippet.globalVars);
