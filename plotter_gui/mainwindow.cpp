@@ -1765,6 +1765,12 @@ void MainWindow::updateDataAndReplot()
     {
         std::lock_guard<std::mutex> lock( _current_streamer->mutex() );
         importPlotDataMap( _current_streamer->dataMap(), false );
+
+        for( auto& custom_it: _custom_plots)
+        {
+            custom_it.second->calculate(_mapped_plot_data);
+        }
+
     }
 
     forEachWidget( [](PlotWidget* plot)

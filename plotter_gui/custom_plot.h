@@ -35,12 +35,20 @@ public:
     static CustomPlotPtr createFromXML(QDomElement &element );
 
 private:
-    void addJavascriptDependencies(QJSEngine &engine);
+    void initJsEngine();
+
+    PlotData::Point  calculatePoint(QJSValue &calcFct,
+                                    const PlotData &src_data,
+                                    const std::vector<const PlotData *> &channels_data, QJSValue &chan_values,
+                                    size_t point_index);
 
     std::string _linked_plot_name;
     std::string _plot_name;
     QString _global_vars;
     QString _function;
     std::vector<std::string> _used_channels;
+
+    std::shared_ptr<QJSEngine> _jsEngine;
+    double _last_updated_timestamp;
 };
 
