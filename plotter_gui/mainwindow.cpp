@@ -778,15 +778,18 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
     auto custom_equations = root.firstChildElement( "customMathEquations" );
 
     try{
-        for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
-             custom_eq.isNull() == false;
-             custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+        if( !custom_equations.isNull() )
         {
-            CustomPlotPtr new_custom_plot = CustomPlot::createFromXML(custom_eq);
-            const auto& name = new_custom_plot->name();
-            _custom_plots[name] = new_custom_plot;
-            new_custom_plot->calculate( _mapped_plot_data );
-            _curvelist_widget->addItem( QString::fromStdString( name ) );
+            for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
+                 custom_eq.isNull() == false;
+                 custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+            {
+                CustomPlotPtr new_custom_plot = CustomPlot::createFromXML(custom_eq);
+                const auto& name = new_custom_plot->name();
+                _custom_plots[name] = new_custom_plot;
+                new_custom_plot->calculate( _mapped_plot_data );
+                _curvelist_widget->addItem( QString::fromStdString( name ) );
+            }
         }
     }
     catch( std::runtime_error& err)
