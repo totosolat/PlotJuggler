@@ -8,7 +8,7 @@
 #include <QStandardItemModel>
 #include <QTableView>
 
-#include "math_plot.h"
+#include "custom_plot.h"
 #include "tree_completer.h"
 
 class CustomSortedTableItem;
@@ -22,7 +22,7 @@ class FilterableListWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit FilterableListWidget(const std::unordered_map<std::string, MathPlotPtr>& mapped_math_plots,
+    explicit FilterableListWidget(const std::unordered_map<std::string, CustomPlotPtr>& mapped_math_plots,
                                   QWidget *parent = 0);
     ~FilterableListWidget();
 
@@ -42,16 +42,18 @@ public:
 
     void updateFilter();
 
-    QStandardItemModel *getTable() const
+    QStandardItemModel *getTableModel() const
     {
         return _model;
     }
 
-    QTableView* getView() const;
+    QTableView* getTableView() const;
+
+    QTableView* getCustomView() const;
 
     bool is2ndColumnHidden() const
     {
-        return getView()->isColumnHidden(1);
+        return getTableView()->isColumnHidden(1);
     }
 
     virtual void keyPressEvent(QKeyEvent * event) override;
@@ -98,7 +100,7 @@ private:
 
     QStandardItemModel* _model;
 
-    const std::unordered_map<std::string, MathPlotPtr>& _mapped_math_plots;
+    const std::unordered_map<std::string, CustomPlotPtr>& _mapped_math_plots;
 
 signals:
 

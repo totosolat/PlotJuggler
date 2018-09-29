@@ -19,7 +19,7 @@
 #include "PlotJuggler/dataloader_base.h"
 #include "PlotJuggler/statepublisher_base.h"
 #include "PlotJuggler/datastreamer_base.h"
-#include "math_plot.h"
+#include "custom_plot.h"
 
 namespace Ui {
 class MainWindow;
@@ -155,7 +155,8 @@ private:
     void forEachWidget(std::function<void(PlotWidget*)> op);
 
     PlotDataMapRef  _mapped_plot_data;
-    std::unordered_map<std::string, MathPlotPtr> _mapped_math_plots;
+
+    std::unordered_map<std::string, CustomPlotPtr> _custom_plots;
 
     void rearrangeGridLayout();
 

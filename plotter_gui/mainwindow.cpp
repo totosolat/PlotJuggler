@@ -36,7 +36,7 @@
 #include "selectlistdialog.h"
 #include "aboutdialog.h"
 #include "PlotJuggler/plotdata.h"
-#include "add_math_plot.h"
+#include "add_custom_plot.h"
 
 
 MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *parent) :
@@ -55,7 +55,7 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
 
     _test_option = (commandline_parser.isSet("test"));
 
-    _curvelist_widget = new FilterableListWidget(_mapped_math_plots, this);
+    _curvelist_widget = new FilterableListWidget(_custom_plots, this);
     _streamer_signal_mapper = new QSignalMapper(this);
 
     ui->setupUi(this);
@@ -75,9 +75,6 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
         }
     }
 
-    connect( _curvelist_widget->getView()->verticalScrollBar(), &QScrollBar::sliderMoved,
-             this, &MainWindow::onUpdateLeftTableValues );
-
     connect( _curvelist_widget, &FilterableListWidget::hiddenItemsChanged,
              this, &MainWindow::onUpdateLeftTableValues );
 
@@ -93,8 +90,7 @@ MainWindow::MainWindow(const QCommandLineParser &commandline_parser, QWidget *pa
     connect(_curvelist_widget, &FilterableListWidget::refreshMathPlot,
             this, &MainWindow::onRefreshMathPlot);
 
-    connect(_curvelist_widget->getView()->verticalScrollBar(),
-            &QScrollBar::valueChanged,
+    connect(_curvelist_widget->getTableView()->verticalScrollBar(), &QScrollBar::valueChanged,
             this, &MainWindow::onUpdateLeftTableValues );
 
     connect( ui->timeSlider, &RealSlider::realValueChanged,
@@ -239,64 +235,66 @@ void MainWindow::onRedoInvoked()
 
 void MainWindow::onUpdateLeftTableValues()
 {
-    auto table_model = _curvelist_widget->getTable();
-    auto table_view  = _curvelist_widget->getView();
+    auto table_model = _curvelist_widget->getTableModel();
 
-    if( _curvelist_widget->is2ndColumnHidden() == false)
+    for(auto table_view: { _curvelist_widget->getTableView(), _curvelist_widget->getCustomView() } )
     {
-        table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
-        table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
-
-        const int vertical_height = table_view->visibleRegion().boundingRect().height();
-
-        for (int row = 0; row < _curvelist_widget->rowCount(); row++)
+        if( _curvelist_widget->is2ndColumnHidden() == false)
         {
-            int vertical_pos = table_view->rowViewportPosition(row);
-            if( vertical_pos < 0 || table_view->isRowHidden(row) ){ continue; }
-            if( vertical_pos > vertical_height){ break; }
+            table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+            table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Fixed);
 
-            const std::string& name = table_model->item(row,0)->text().toStdString();
-            auto it = _mapped_plot_data.numeric.find(name);
-            if( it !=  _mapped_plot_data.numeric.end())
+            const int vertical_height = table_view->visibleRegion().boundingRect().height();
+
+            for (int row = 0; row < _curvelist_widget->rowCount(); row++)
             {
-                auto& data = it->second;
+                int vertical_pos = table_view->rowViewportPosition(row);
+                if( vertical_pos < 0 || table_view->isRowHidden(row) ){ continue; }
+                if( vertical_pos > vertical_height){ break; }
 
-                double num = 0.0;
-                bool valid = false;
+                const std::string& name = table_model->item(row,0)->text().toStdString();
+                auto it = _mapped_plot_data.numeric.find(name);
+                if( it !=  _mapped_plot_data.numeric.end())
+                {
+                    auto& data = it->second;
 
-                if( _tracker_time < std::numeric_limits<double>::max())
-                {
-                    auto value = data.getYfromX( _tracker_time );
-                    if(value){
-                        valid = true;
-                        num = value.value();
-                    }
-                }
-                else{
-                    if( data.size() > 0) {
-                        valid = true;
-                        num = data.back().y;
-                    }
-                }
-                if( valid)
-                {
-                    QString num_text = QString::number( num, 'f', 3);
-                    if(num_text.contains('.'))
+                    double num = 0.0;
+                    bool valid = false;
+
+                    if( _tracker_time < std::numeric_limits<double>::max())
                     {
-                        int idx = num_text.length() -1;
-                        while( num_text[idx] == '0' )
-                        {
-                            num_text[idx] = ' ';
-                            idx--;
+                        auto value = data.getYfromX( _tracker_time );
+                        if(value){
+                            valid = true;
+                            num = value.value();
                         }
-                        if(  num_text[idx] == '.') num_text[idx] = ' ';
                     }
-                    table_model->item(row,1)->setText(num_text + ' ');
+                    else{
+                        if( data.size() > 0) {
+                            valid = true;
+                            num = data.back().y;
+                        }
+                    }
+                    if( valid)
+                    {
+                        QString num_text = QString::number( num, 'f', 3);
+                        if(num_text.contains('.'))
+                        {
+                            int idx = num_text.length() -1;
+                            while( num_text[idx] == '0' )
+                            {
+                                num_text[idx] = ' ';
+                                idx--;
+                            }
+                            if(  num_text[idx] == '.') num_text[idx] = ' ';
+                        }
+                        table_model->item(row,1)->setText(num_text + ' ');
+                    }
                 }
             }
+            table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
+            table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
         }
-        table_view->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
-        table_view->horizontalHeader()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     }
 }
 
@@ -777,6 +775,30 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
         }
     }
 
+    auto custom_equations = root.firstChildElement( "customMathEquations" );
+
+    try{
+        if( !custom_equations.isNull() )
+        {
+            for (QDomElement custom_eq = custom_equations.firstChildElement( "snippet" )  ;
+                 custom_eq.isNull() == false;
+                 custom_eq = custom_eq.nextSiblingElement( "snippet" ) )
+            {
+                CustomPlotPtr new_custom_plot = CustomPlot::createFromXML(custom_eq);
+                const auto& name = new_custom_plot->name();
+                _custom_plots[name] = new_custom_plot;
+                new_custom_plot->calculate( _mapped_plot_data );
+                _curvelist_widget->addItem( QString::fromStdString( name ) );
+            }
+        }
+    }
+    catch( std::runtime_error& err)
+    {
+        QMessageBox::warning(this, tr("Exception"),
+                             tr("Failed to refresh a customMathEquation \n\n %1\n")
+                             .arg(err.what()) );
+    }
+
     //-----------------------------------------------------
     checkAllCurvesFromLayout(root);
     //-----------------------------------------------------
@@ -795,6 +817,7 @@ bool MainWindow::xmlLoadState(QDomDocument state_document)
         bool remove_offset = (relative_time.attribute("enabled") == QString("1"));
         ui->pushButtonRemoveTimeOffset->setChecked(remove_offset);
     }
+
     return true;
 }
 
@@ -833,12 +856,19 @@ void MainWindow::onActionSaveLayout()
         }
     }
     //------------------------------------
+    QDomElement math_elements =  doc.createElement( "customMathEquations" );
+
+    for(const auto& it: _custom_plots)
+    {
+      const auto& custom_plot = it.second;
+      math_elements.appendChild( custom_plot->xmlSaveState(doc) );
+    }
+    root.appendChild( math_elements );
 
     QSettings settings;
 
     QString directory_path  = settings.value("MainWindow.lastLayoutDirectory",
                                              QDir::currentPath() ).toString();
-
     QFileDialog saveDialog;
     saveDialog.setAcceptMode(QFileDialog::AcceptSave);
     saveDialog.setDefaultSuffix("xml");
@@ -876,10 +906,10 @@ void MainWindow::deleteDataMultipleCurves(const std::vector<std::string> &curve_
         emit requestRemoveCurveByName( curve_name );
         _mapped_plot_data.numeric.erase( plot_curve );
 
-        auto math_curve = _mapped_math_plots.find( curve_name );
-        if( math_curve != _mapped_math_plots.end())
+        auto math_curve = _custom_plots.find( curve_name );
+        if( math_curve != _custom_plots.end())
         {
-            _mapped_math_plots.erase( math_curve );
+            _custom_plots.erase( math_curve );
         }
 
         int row = _curvelist_widget->findRowByName( curve_name );
@@ -939,7 +969,7 @@ void MainWindow::onDeleteLoadedData()
         } );
         _mapped_plot_data.numeric.clear();
         _mapped_plot_data.user_defined.clear();
-        _mapped_math_plots.clear();
+        _custom_plots.clear();
 
         _curvelist_widget->clear();
 
@@ -1735,6 +1765,12 @@ void MainWindow::updateDataAndReplot()
     {
         std::lock_guard<std::mutex> lock( _current_streamer->mutex() );
         importPlotDataMap( _current_streamer->dataMap(), false );
+
+        for( auto& custom_it: _custom_plots)
+        {
+            custom_it.second->calculate(_mapped_plot_data);
+        }
+
     }
 
     forEachWidget( [](PlotWidget* plot)
@@ -1998,17 +2034,16 @@ void MainWindow::editMathPlot(const std::string &plot_name)
 void MainWindow::onRefreshMathPlot(const std::string &plot_name)
 {
     try{
-        auto it = _mapped_math_plots.find(plot_name);
-        if(it == _mapped_math_plots.end())
+        auto it = _custom_plots.find(plot_name);
+        if(it == _custom_plots.end())
         {
             qWarning("failed to find custom equation");
             return;
         }
-        MathPlotPtr ce = it->second;
+        CustomPlotPtr ce = it->second;
 
-        PlotData &dstPlotData = _mapped_plot_data.numeric.at(plot_name);
-        ce->refresh(_mapped_plot_data);
-        dstPlotData.swapData( ce->plotData() );
+        ce->calculate(_mapped_plot_data);
+
         onUpdateLeftTableValues();
         updateDataAndReplot();
     }
@@ -2020,7 +2055,7 @@ void MainWindow::onRefreshMathPlot(const std::string &plot_name)
 
 void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
 {
-    AddMathPlotDialog dialog(_mapped_plot_data, _mapped_math_plots, this);
+    AddCustomPlotDialog dialog(_mapped_plot_data, _custom_plots, this);
     if(!edit)
     {
         // add
@@ -2028,8 +2063,8 @@ void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
     }
     else
     {
-        auto it = _mapped_math_plots.find(name);
-        if(it == _mapped_math_plots.end())
+        auto it = _custom_plots.find(name);
+        if(it == _custom_plots.end())
         {
             qWarning("failed to find custom equation");
             return;
@@ -2041,20 +2076,13 @@ void MainWindow::addOrEditMathPlot(const std::string &name, bool edit)
     {
         const QString& qplot_name = dialog.getName();
         std::string plot_name = qplot_name.toStdString();
-        MathPlotPtr eq = dialog.getMathPlotData();
+        CustomPlotPtr eq = dialog.getCustomPlotData();
 
-        if(!edit)
-        {
-            _mapped_plot_data.addNumeric(plot_name);
-        }
-
-        PlotData *dstPlotData = &_mapped_plot_data.numeric.at(plot_name);
-
-        dstPlotData->clear();
-        dstPlotData->swapData( eq->plotData() );
+        eq->calculate(_mapped_plot_data);
 
         // keep data for reference
-        _mapped_math_plots[plot_name] = eq;
+        _custom_plots[plot_name] = eq;
+
         if(!edit)
         {
             _curvelist_widget->addItem(qplot_name);
